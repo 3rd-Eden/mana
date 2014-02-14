@@ -1,0 +1,46 @@
+# mana
+
+Mana is small package that provides a really simple basic structure for creating
+API clients. Take your mana potion and start creating magical api clients.
+
+_Please note that this module is used to create API's that **I** like to use, so
+it's highly opinionated in the way it's setup_
+
+## Installation
+
+The module is released through npm.
+
+```
+npm install --save mana
+```
+
+## Drinking the potion
+
+The module assumes a simple pattern. The API end points are listed in a folder
+called `endpoints`. This folder contains JavaScript files which exports
+a function:
+
+```js
+function Endpoint(api) {
+  this.api = api;
+}
+
+module.exports = Endpoint
+```
+
+This function receives a reference to your base API class once it's initialised.
+These API endpoints will be introduced on the prototype of your base API in
+lowercase. So if you name your file `Endpoints` it will create an
+`base.endpoints` method for you which access this constructed function. Now the
+beauty of this is that these methods support lazy construction. So only when you
+access the `.endpoints` property, it will create a new instance (only once
+of course). This way you don't construct pointless API points that might never be
+used by your users. 
+
+In addition to lowercasing your endpoint and introducing it as constructed
+property it also exposes the Full class on the base API. This class is Uppercase
+first, just like all Classes should be in JavaScript.
+
+## License
+
+MIT

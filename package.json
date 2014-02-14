@@ -1,0 +1,36 @@
+{
+  "name": "mana",
+  "version": "0.0.1",
+  "description": "mana potion",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/3rd-Eden/mana"
+  },
+  "keywords": [
+    "api",
+    "api-client",
+    "api-structure",
+    "base",
+    "client",
+    "cows",
+    "mana",
+    "rest"
+  ],
+  "author": "Arnout Kazemier",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/3rd-Eden/mana/issues"
+  },
+  "homepage": "https://github.com/3rd-Eden/mana",
+  "dependencies": {
+    "assign": "0.0.x",
+    "back": "0.1.x",
+    "debug": "0.7.x",
+    "fusing": "0.0.x",
+    "request": "2.33.x"
+  }
+}
