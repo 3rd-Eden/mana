@@ -283,6 +283,10 @@ Mana.drink = function drink(module) {
 
     debug('registered endpoint %s', lowercase);
     Potion[uppercasefirst] = require(path.join(directory, 'endpoints', name));
+
+    if ('function' !== typeof Potion[uppercasefirst]) {
+      throw new Error('You forgot to add module.exports on your module: '+ name);
+    }
   });
 
   //
