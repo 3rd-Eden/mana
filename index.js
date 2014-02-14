@@ -215,7 +215,7 @@ Mana.prototype.send = function send(args) {
       if ('string' === typeof data) {
         try { data = JSON.parse(body); }
         catch (e) {
-          debug('Failed to parse JSON: %s', err.message);
+          debug('Failed to parse JSON: %s for %s', err.message, options.uri);
           return next();
         }
       }
@@ -234,41 +234,23 @@ Mana.prototype.send = function send(args) {
     back(function toTheFuture(err, backoff) {
       options.backoff = backoff;
 
-      debug('Starting request again after back off attempt %s/%s', backoff.attempt, backoff.retries);
+      debug(
+        'Starting request again to %s after back off attempt %s/%s',
+        options.uri,
+        backoff.attempt,
+        backoff.retries
+      );
       if (!err) return request(options, parse);
 
       //
       // Okay, we can assume that shit is seriously wrong here.
       //
-      return assign.destroy(new Error('Failed to process request'));
+      debug('We failed to fetch %s, all servers are down.', options.uri);
+      assign.destroy(new Error('Failed to process request'));
     }, options.backoff);
   });
 
   return assign;
-};
-
-/**
- * Define an lazy loading API.
- *
- * @param {Object} where Where should we define the property
- * @param {String} name The name of the property
- * @param {Function} fn The function that returns the new value
- * @api private
- */
-Mana.define = function define(where, name, fn) {
-  Object.defineProperty(where, name, {
-    configurable: true,
-    get: function get() {
-      return Object.defineProperty(this, name, {
-        value: fn.call(this)
-      })[name];
-    },
-    set: function set(value) {
-      return Object.defineProperty(this, name, {
-        value: value
-      })[name];
-    }
-  });
 };
 
 /**
@@ -295,10 +277,11 @@ Mana.drink = function drink(module) {
     var lowercase = name.slice(0, -3).toLowerCase()
       , uppercasefirst = lowercase.slice(0, 1).toUpperCase() + lowercase.slice(1);
 
-    Potion.define(Potion.prototype, lowercase, function defined() {
+    Potion.predefine.lazy(Potion.prototype, lowercase, function defined() {
       return new Potion[uppercasefirst](this);
     });
 
+    debug('registered endpoint %s', lowercase);
     Potion[uppercasefirst] = require(path.join(directory, 'endpoints', name));
   });
 
