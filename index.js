@@ -270,6 +270,12 @@ Mana.prototype.view = function view(args) {
 Mana.prototype.send = function send(args) {
   args = this.args(arguments);
 
+  //
+  // Automatically assume that people want to transform an array in to
+  // joined/paths/names if no string is supplied but we do have an array.
+  //
+  if (!args.str && args.array) args.str = args.array.join('/');
+
   var mirrors = [ this.api ].concat(this.mirrors || [])
     , assign = new Assign(this, this.all(args.str))
     , options = args.options || {}
