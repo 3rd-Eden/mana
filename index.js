@@ -2,6 +2,7 @@
 
 var debug = require('debug')('mana')
   , request = require('request')
+  , qs = require('querystring')
   , Assign = require('assign')
   , fuse = require('fusing')
   , back = require('back')
@@ -20,6 +21,8 @@ var toString = Object.prototype.toString
  * @api public
  */
 function Mana() {
+  this.fnqueue = Object.create(null);
+
   if ('function' === this.type(this.initialise)) {
     this.initialise(arguments);
   }
@@ -54,6 +57,72 @@ Mana.prototype.version = require('./package.json').version;
  * @public
  */
 Mana.prototype.name = require('./package.json').name;
+
+/**
+ * Return a function that will call all queued callbacks that wants to hit the
+ * same endpoint.
+ *
+ * @param {String} urid The Unique Request Identifier.
+ * @return {Function} A callback which calls all queued functions.
+ * @api private
+ */
+Mana.prototype.all = function all(urid) {
+  var mana = this;
+
+  return function all(err, data) {
+    if (!(urid in mana.fnqueue)) {
+      if (!err) return debug('No queued callbacks for urid %s, ignoring data.', urid);
+      return debug('No queued callback for urid %s but received error: ', err.message);
+    }
+
+    //
+    // Get the queued function list before calling the callbacks so we don't
+    // create a recursive loop if the first function calls the same API endpoint
+    // again and causes it to get queued.
+    //
+    var queue = mana.fnqueue[urid];
+    delete mana.fnqueue[urid];
+
+    queue.forEach(function each(fn) {
+      fn(err, data);
+
+      if (fn.assign) fn.assign.destroy();
+      delete fn.assign;
+    });
+  };
+};
+
+/**
+ * Check if we're already fetching data for the given request.
+ *
+ * @param {String} urid The Unique Request Identifier.
+ * @returns {Array|Undefined} Potential list of callbacks to call.
+ * @api privat
+ */
+Mana.prototype.fetching = function fetching(urid) {
+  return this.fnqueue[urid];
+};
+
+/**
+ * Add a new callback to the queue.
+ *
+ * @param {String} urid The Unique Request Identifier.
+ * @param {function} fn The callback to queue.
+ * @param {Assign} assign The assignment we returned.
+ * @returns {Assign} The assignment.
+ * @api private
+ */
+Mana.prototype.push = function push(urid, fn, assign) {
+  fn.assign = assign;
+
+  if (!this.fnqueue[urid]) {
+    this.fnqueue[urid] = [fn];
+  } else {
+    this.fnqueue[urid].push(fn);
+  }
+
+  return assign;
+};
 
 /**
  * Parse the given arguments because we don't want to do an optional queue check
@@ -137,6 +206,34 @@ Mana.prototype.downgrade = function downgrade(mirrors, fn) {
   return this;
 };
 
+Mana.prototype.view = function view(args) {
+  args = this.args(arguments);
+
+  var query = {};
+
+  args.str = '/-/_view/'+ args.str +'?';
+
+  //
+  // We're querying the view based on a known or part of a known key.
+  //
+  if (args.key) {
+    query.startkey = JSON.stringify([args.key]);
+    query.endkey   = JSON.stringify([args.key, {}]);
+  }
+
+  query.group_level = 'group_level' in args.options ? args.options.group_level : 3;
+  query.descending = 'descending' in args.options ? args.options.descending : true;
+  query.stale = 'stale' in args.options ? args.options.stale : 'update_after';
+
+  //
+  // Optional query arguments.
+  //
+  if ('limit' in args.options) query.limit = args.options.limit;
+  if ('skip' in args.options) query.skip = args.options.skip;
+
+  return this.send(args.str + qs.stringify(query), args.fn);
+};
+
 /**
  * Query against a given API endpoint.
  *
@@ -148,7 +245,7 @@ Mana.prototype.send = function send(args) {
   args = this.args(arguments);
 
   var mirrors = [ this.api ].concat(this.mirrors || [])
-    , assign = new Assign(this, args.fn)
+    , assign = new Assign(this, this.all(args.str))
     , options = args.options || {};
 
   options.method = 'method' in options ? options.method : 'GET';
@@ -160,6 +257,16 @@ Mana.prototype.send = function send(args) {
     maxDelay: 'maxdelay' in options ? options.maxdelay : this.maxdelay,
     factor: 'factor' in options ? options.factor : this.factor
   };
+
+  //
+  // Optimization: Check if we're already running a request for this given API
+  // endpoint so we can have the given callback executed when this request
+  // finishes. This allows us to get a response faster for the callback and
+  // reduce requests on the actual API.
+  //
+  if (options.method === 'GET' && this.fetching(args.str)) {
+    return this.push(args.str, args.fn, assign);
+  }
 
   //
   // Add some extra HTTP headers so it would be easier to get a normal response
@@ -225,8 +332,8 @@ Mana.prototype.send = function send(args) {
 
     //
     // The error indicates that we've ran out of mirrors, so we should try
-    // a backoff operation against the default npm registry, which is provided
-    // by the callback. If the backoff fails, we should completely give up and
+    // a back off operation against the default npm registry, which is provided
+    // by the callback. If the back off fails, we should completely give up and
     // return an useful error back to the client.
     //
     if (!err) return request(options, parse);
@@ -240,6 +347,7 @@ Mana.prototype.send = function send(args) {
         backoff.attempt,
         backoff.retries
       );
+
       if (!err) return request(options, parse);
 
       //
@@ -254,7 +362,7 @@ Mana.prototype.send = function send(args) {
 };
 
 /**
- * Drink this magical elixir and automagically introduce the correct lazy loaded
+ * Drink this magical elixir and auto"magically" introduce the correct lazy loaded
  * methods.
  *
  * @param {String} module
