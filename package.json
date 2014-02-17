@@ -4,7 +4,7 @@
   "description": "mana potion",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha $(find test -name '*.test.js')"
   },
   "repository": {
     "type": "git",
@@ -32,5 +32,10 @@
     "debug": "0.7.x",
     "fusing": "0.0.x",
     "request": "2.33.x"
+  },
+  "devDependencies": {
+    "mocha": "1.17.x",
+    "pre-commit": "0.0.x",
+    "chai": "1.9.x"
   }
 }
