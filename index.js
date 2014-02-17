@@ -358,10 +358,14 @@ Mana.prototype.send = function send(args) {
       //
       var data = body;
 
-      if ('string' === typeof data) {
+      if (
+        'string' === typeof data
+        && !~options.headers.Accept.indexOf('text')
+        && !~options.headers.Accept.indexOf('html')
+      ) {
         try { data = JSON.parse(body); }
         catch (e) {
-          debug('Failed to parse JSON: %s for %s', err.message, options.uri);
+          debug('Failed to parse JSON: %s for %s', e.message, options.uri);
           return next();
         }
       }
@@ -438,6 +442,18 @@ Mana.drink = function drink(module) {
       throw new Error('You forgot to add module.exports on your module: '+ name);
     }
   });
+
+  try {
+    var data = require(path.join(directory, 'package.json'));
+
+    Potion.prototype.version = data.version || Potion.prototype.version;
+    Potion.prototype.name = data.name || Potion.prototype.name;
+
+    debug('updated potion.version to %s', Potion.prototype.version);
+    debug('updated potion.name to %s', Potion.prototype.name);
+  } catch (e) {
+    debug('failed to parse project package.json, manually set `name`, `version`');
+  }
 
   //
   // Expose the module on in our preferred way.
