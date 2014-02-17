@@ -255,7 +255,7 @@ Mana.prototype.view = function view(args) {
     // instead of this silly data format.
     //
     data.rows.forEach(function each(row) {
-      add(row);
+      add(row.key);
     });
   });
 };
