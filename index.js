@@ -21,7 +21,10 @@ var toString = Object.prototype.toString
  * @api public
  */
 function Mana() {
-  this.fnqueue = Object.create(null);
+  this.fnqueue = Object.create(null);   // Callback queue.
+  this.remaining = 0;                   // How many API calls are remaining.
+  this.ratelimit = 0;                   // The amount of API calls allowed.
+  this.ratereset = 0;                   // In how many seconds is the rate limit reset.
 
   if ('function' === this.type(this.initialise)) {
     this.initialise(arguments);
@@ -246,7 +249,8 @@ Mana.prototype.send = function send(args) {
 
   var mirrors = [ this.api ].concat(this.mirrors || [])
     , assign = new Assign(this, this.all(args.str))
-    , options = args.options || {};
+    , options = args.options || {}
+    , mana = this;
 
   options.method = 'method' in options ? options.method : 'GET';
   options.strictSSL = 'strictSSL' in options ? options.strictSSL : false;
@@ -312,6 +316,10 @@ Mana.prototype.send = function send(args) {
         debug(err, res ? res.statusCode : '', options.uri);
         return next();
       }
+
+      mana.ratereset = +res.headers['x-rate-limit-reset'] || mana.ratereset;
+      mana.ratelimit = +res.headers['x-rate-limit-limit'] || mana.ratelimit;
+      mana.remaining = +res.headers['x-rate-limit-remaining'] || mana.remaining;
 
       //
       // In this case I prefer to manually parse the JSON response as it allows us
