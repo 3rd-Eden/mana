@@ -72,6 +72,8 @@ Mana.prototype.name = require('./package.json').name;
 Mana.prototype.all = function all(urid) {
   var mana = this;
 
+  debug('adding an `all` callback for urid %s', urid);
+
   return function all(err, data) {
     if (!(urid in mana.fnqueue)) {
       if (!err) return debug('No queued callbacks for urid %s, ignoring data.', urid);
@@ -209,6 +211,15 @@ Mana.prototype.downgrade = function downgrade(mirrors, fn) {
   return this;
 };
 
+/**
+ * Send a request to a CouchDB based view endpoint.
+ *
+ * @param {String} str The name of the CouchDB view.
+ * @param {Object} options The query string options for the URL.
+ * @param {function} fn The callback.
+ * @returns {Assignment}
+ * @api public
+ */
 Mana.prototype.view = function view(args) {
   args = this.args(arguments);
 
@@ -219,13 +230,13 @@ Mana.prototype.view = function view(args) {
   //
   // We're querying the view based on a known or part of a known key.
   //
-  if (args.key) {
-    query.startkey = JSON.stringify([args.key]);
-    query.endkey   = JSON.stringify([args.key, {}]);
+  if (args.options.key) {
+    query.startkey = JSON.stringify([args.options.key]);
+    query.endkey   = JSON.stringify([args.options.key, {}]);
   }
 
   query.group_level = 'group_level' in args.options ? args.options.group_level : 3;
-  query.descending = 'descending' in args.options ? args.options.descending : true;
+  query.descending = 'descending' in args.options ? args.options.descending : false;
   query.stale = 'stale' in args.options ? args.options.stale : 'update_after';
 
   //
@@ -234,7 +245,19 @@ Mana.prototype.view = function view(args) {
   if ('limit' in args.options) query.limit = args.options.limit;
   if ('skip' in args.options) query.skip = args.options.skip;
 
-  return this.send(args.str + qs.stringify(query), args.fn);
+  return this.send(args.str + qs.stringify(query), args.fn).emits(function emits(data, add) {
+    if (!('rows' in data)) return;
+
+    //
+    // CouchDB view queries return an Array with matching rows and their data.
+    // In order to make this easier to query we're going to pre-chunk these rows
+    // so every `map` and `reduce` method from Assign receives these rows
+    // instead of this silly data format.
+    //
+    data.rows.forEach(function each(row) {
+      add(row);
+    });
+  });
 };
 
 /**
@@ -270,6 +293,8 @@ Mana.prototype.send = function send(args) {
   //
   if (options.method === 'GET' && this.fetching(args.str)) {
     return this.push(args.str, args.fn, assign);
+  } else {
+    this.push(args.str, args.fn);
   }
 
   //
@@ -344,7 +369,10 @@ Mana.prototype.send = function send(args) {
     // by the callback. If the back off fails, we should completely give up and
     // return an useful error back to the client.
     //
-    if (!err) return request(options, parse);
+    if (!err) {
+      debug('requesting url %s', options.uri);
+      return request(options, parse);
+    }
 
     back(function toTheFuture(err, backoff) {
       options.backoff = backoff;
