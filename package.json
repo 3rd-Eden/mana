@@ -1,6 +1,6 @@
 {
   "name": "mana",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "mana potion",
   "main": "index.js",
   "scripts": {
@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/3rd-Eden/mana",
   "dependencies": {
-    "assign": "git://github.com/3rd-Eden/assign",
+    "assign": "0.1.x",
     "back": "0.1.x",
     "debug": "0.7.x",
     "fusing": "0.0.x",
