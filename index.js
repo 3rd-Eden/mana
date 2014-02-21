@@ -62,6 +62,16 @@ Mana.prototype.version = require('./package.json').version;
 Mana.prototype.name = require('./package.json').name;
 
 /**
+ * The prefix of the CouchDB view/design doc. This defaults to a rewriter that's
+ * used by npm. You should implement it as well, because it's much more pleasing
+ * to my eye balls.
+ *
+ * @type {String} The prefix
+ * @public
+ */
+Mana.prototype._view = '/-/_view/';
+
+/**
  * Return a function that will call all queued callbacks that wants to hit the
  * same endpoint.
  *
@@ -225,7 +235,7 @@ Mana.prototype.view = function view(args) {
 
   var query = {};
 
-  args.str = '/-/_view/'+ args.str +'?';
+  args.str = this._view + args.str +'?';
 
   //
   // We're querying the view based on a known or part of a known key.
