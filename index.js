@@ -276,10 +276,10 @@ Mana.prototype.send = function send(args) {
   //
   if (!args.str && args.array) args.str = args.array.join('/');
 
-  var mirrors = [ this.api ].concat(this.mirrors || [])
-    , assign = new Assign(this, this.all(args.str))
+  var mana = this
     , options = args.options || {}
-    , mana = this;
+    , assign = new Assign(this, this.all(args.str))
+    , mirrors = [ options.api || this.api ].concat(this.mirrors || []);
 
   options.method = 'method' in options ? options.method : 'GET';
   options.strictSSL = 'strictSSL' in options ? options.strictSSL : false;
