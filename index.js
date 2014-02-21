@@ -281,7 +281,7 @@ Mana.prototype.send = function send(args) {
     , assign = new Assign(this, this.all(args.str))
     , mirrors = [ options.api || this.api ].concat(this.mirrors || []);
 
-  options.method = 'method' in options ? options.method : 'GET';
+  options.method = ('method' in options ? options.method : 'GET').toUpperCase();
   options.strictSSL = 'strictSSL' in options ? options.strictSSL : false;
   options.headers = 'headers' in options ? options.headers : {};
   options.backoff = {
@@ -362,6 +362,7 @@ Mana.prototype.send = function send(args) {
         'string' === typeof data
         && !~options.headers.Accept.indexOf('text')
         && !~options.headers.Accept.indexOf('html')
+        && 'HEAD' !== options.method
       ) {
         try { data = JSON.parse(body); }
         catch (e) {
@@ -370,7 +371,8 @@ Mana.prototype.send = function send(args) {
         }
       }
 
-      assign.write(data, { end: true });
+      if ('HEAD' !== options.method) assign.write(data, { end: true });
+      else assign.write({ res: res, data: data }, { end: true });
     }
 
     //
