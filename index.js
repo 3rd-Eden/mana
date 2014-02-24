@@ -27,7 +27,7 @@ function Mana() {
   this.ratereset = 0;                   // In how many seconds is the rate limit reset.
 
   if ('function' === this.type(this.initialise)) {
-    this.initialise(arguments);
+    this.initialise.apply(this, arguments);
   }
 }
 

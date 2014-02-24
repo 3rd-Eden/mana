@@ -12,6 +12,21 @@ describe('mana', function () {
     it('calls the initialise function');
   });
 
+  describe('.initialise', function () {
+    it('correctly receives all arguments', function (done) {
+      var Init = Mana.extend({
+        initialise: function (foo, bar) {
+          expect(foo).to.equal('bar');
+          expect(bar).to.equal('foo');
+
+          done();
+        }
+      });
+
+      new Init('bar', 'foo');
+    });
+  });
+
   describe('#args', function () {
     it('aliases types', function () {
       expect(mana.args([function () {}])).to.have.property('fn');
