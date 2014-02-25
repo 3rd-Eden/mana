@@ -605,8 +605,7 @@ Mana.drink = function drink(module) {
   //
   // Expose the module on in our preferred way.
   //
-  module.exports = Potion;
-  return Potion;
+  return module.exports = Potion;
 };
 
 //
