@@ -1,6 +1,7 @@
 'use strict';
 
-var debug = require('debug')('mana')
+var debugFactory = require('debug')
+  , debug = debugFactory('mana')
   , request = require('request')
   , qs = require('querystring')
   , Assign = require('assign')
@@ -26,6 +27,12 @@ function Mana() {
   this.remaining = 0;                   // How many API calls are remaining.
   this.ratelimit = 0;                   // The amount of API calls allowed.
   this.ratereset = 0;                   // In how many seconds is the rate limit reset.
+
+  //
+  // Create a debug method that correctly prefixes log messages with `mana` and
+  // the name of the implementer.
+  //
+  this.debug = debugFactory('mana:'+ this.name);
 
   if ('function' === this.type(this.initialise)) {
     this.initialise.apply(this, arguments);
@@ -92,12 +99,12 @@ Mana.prototype._view = '/-/_view/';
 Mana.prototype.all = function all(urid) {
   var mana = this;
 
-  debug('adding an `all` callback for urid %s', urid);
+  this.debug('adding an `all` callback for urid %s', urid);
 
   return function all(err, data) {
     if (!(urid in mana.fnqueue)) {
-      if (!err) return debug('No queued callbacks for urid %s, ignoring data.', urid);
-      return debug('No queued callback for urid %s but received error: ', err.message);
+      if (!err) return mana.debug('No queued callbacks for urid %s, ignoring data.', urid);
+      return mana.debug('No queued callback for urid %s but received error: ', err.message);
     }
 
     //
@@ -433,8 +440,9 @@ Mana.prototype.send = function send(args) {
        */
       function parse(err, res, body) {
         if (err) {
-          debug('Received an error (%s) for URL %s', err.message, options.uri);
+          mana.debug('Received an error (%s) for URL %s', err.message, options.uri);
 
+          err.url = options.uri;
           err.statusCode = 500; // Force statusCode
           return assign.destroy(err);
         }
@@ -444,7 +452,7 @@ Mana.prototype.send = function send(args) {
         // body.
         //
         if (304 === res.statusCode && cache) {
-          debug('CACHE HIT, using cached data for URL', options.uri);
+          mana.debug('CACHE HIT, using cached data for URL', options.uri);
           return assign.write(cache.data, { end: true });
         }
 
@@ -453,7 +461,7 @@ Mana.prototype.send = function send(args) {
           // Assume that the server is returning an unknown response and that we
           // should try a different server.
           //
-          debug('Received an invalid statusCode (%s) for URL %s', res.statusCode, options.uri);
+          mana.debug('Received an invalid statusCode (%s) for URL %s', res.statusCode, options.uri);
           return next();
         }
 
@@ -481,7 +489,7 @@ Mana.prototype.send = function send(args) {
             // is down and returned an error page, so we need to continue to
             // a different server.
             //
-            debug('Failed to parse JSON: %s for URL %s', e.message, options.uri);
+            mana.debug('Failed to parse JSON: %s for URL %s', e.message, options.uri);
             return next();
           }
         }
@@ -494,6 +502,7 @@ Mana.prototype.send = function send(args) {
         //
         if (res.statusCode === 404 && 'HEAD' !== options.method) {
           err = new Error('Invalid status code: 404');
+          err.url = options.uri;
           err.statusCode = 404;
           err.data = data;
           return assign.destroy(err);
@@ -507,7 +516,7 @@ Mana.prototype.send = function send(args) {
         // responses body usually referrer back to the content that got posted.
         //
         if (res.headers.etag && 'GET' === options.method) {
-          if (cache) debug('CACHE MISS, updating cache for URL %s', options.uri);
+          if (cache) mana.debug('CACHE MISS, updating cache for URL %s', options.uri);
           mana.fireforget('set', {
             etag: res.headers.etag,
             key: args.str,
@@ -526,14 +535,14 @@ Mana.prototype.send = function send(args) {
       // give up and return an useful error back to the client.
       //
       if (!err) {
-        debug('requesting url %s', options.uri);
+        mana.debug('requesting url %s', options.uri);
         return request(options, parse);
       }
 
       back(function toTheFuture(err, backoff) {
         options.backoff = backoff;
 
-        debug(
+        mana.debug(
           'Starting request again to %s after back off attempt %s/%s',
           options.uri,
           backoff.attempt,
@@ -545,7 +554,7 @@ Mana.prototype.send = function send(args) {
         //
         // Okay, we can assume that shit is seriously wrong here.
         //
-        debug('We failed to fetch %s, all servers are down.', options.uri);
+        mana.debug('We failed to fetch %s, all servers are down.', options.uri);
         assign.destroy(new Error('Failed to process request'));
       }, options.backoff);
     });
