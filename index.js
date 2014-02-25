@@ -6,7 +6,8 @@ var debug = require('debug')('mana')
   , Assign = require('assign')
   , fuse = require('fusing')
   , back = require('back')
-  , url = require('url');
+  , url = require('url')
+  , ms = require('ms');
 
 //
 // Cached variables to improve performance.
@@ -36,13 +37,22 @@ fuse(Mana);
 /**
  * Default configuration for the build-in randomized exponential back off.
  *
- * @type {Number}
+ * @type {String|Number}
  * @public
  */
-Mana.prototype.maxdelay = 60000;  // Max duration of exponential back off
-Mana.prototype.mindelay = 100;    // Min duration of exponential back off
-Mana.prototype.retries = 3;       // Allowed back off attempts.
-Mana.prototype.factor = 2;        // Back off factor.
+Mana.prototype.maxdelay = '60 seconds'; // Max duration of exponential back off
+Mana.prototype.mindelay = '100 ms';     // Min duration of exponential back off
+Mana.prototype.retries = 3;             // Allowed back off attempts.
+Mana.prototype.factor = 2;              // Back off factor.
+
+/**
+ * The default request timeout, to prevent long running requests without any way
+ * of aborting it.
+ *
+ * @type {String|Number}
+ * @public
+ */
+Mana.prototype.timeout = '20 seconds';
 
 /**
  * Expose the current version number of our Mana package so it's re-used in our
@@ -292,12 +302,17 @@ Mana.prototype.send = function send(args) {
     , mirrors = [ options.api || this.api ].concat(this.mirrors || []);
 
   options.method = ('method' in options ? options.method : 'GET').toUpperCase();
+  options.timeout = ms('timeout' in options ? options.timeout : this.timeout);
   options.strictSSL = 'strictSSL' in options ? options.strictSSL : false;
   options.headers = 'headers' in options ? options.headers : {};
+
+  //
+  // Exponential back off configuration.
+  //
   options.backoff = {
+    minDelay: ms('mindelay' in options ? options.mindelay : this.mindelay),
+    maxDelay: ms('maxdelay' in options ? options.maxdelay : this.maxdelay),
     retries: 'retries' in options ? options.retires : this.retries,
-    minDelay: 'mindelay' in options ? options.mindelay : this.mindelay,
-    maxDelay: 'maxdelay' in options ? options.maxdelay : this.maxdelay,
     factor: 'factor' in options ? options.factor : this.factor
   };
 
