@@ -292,21 +292,37 @@ Mana.prototype.fireforget = function fireforget(args) {
   args = this.args(arguments);
   args.fn = args.fn || function nope() {};
 
-  var key = args.object.key;
+  var key = args.object.key
+    , mana = this;
 
   //
   // Force asynchronous execution of cache retrieval without starving I/O
   //
-  (global.setImmediate ? global.setImmediate : global.setTimeout)(function immediate() {
-    if ('get' === args.string && this.cache) {
-      if (this.cache.get.length === 1) args.fn(undefined, this.cache.get(key));
-      else this.cache.get(key, args.fn);
-    } else if ('set' === args.string && this.cache) {
-      if (this.cache.set.length === 2) args.fn(undefined, this.cache.set(key, args.object));
-      else this.cache.set(key, args.object, args.fn);
-    } else {
-      args.fn();  // Nothing, no cache or matching methods.
+  (
+    global.setImmediate   // Only available since node 0.10
+    ? global.setImmediate
+    : global.setTimeout
+  )(function immediate() {
+    if (key && mana.cache) {
+      if ('get' === args.string) {
+        if (mana.cache.get.length === 1) {
+          return args.fn(undefined, mana.cache.get(key));
+        } else {
+          return mana.cache.get(key, args.fn);
+        }
+      } else if ('set' === args.string) {
+        if (mana.cache.set.length === 2) {
+          return args.fn(undefined, mana.cache.set(key, args.object));
+        } else {
+          return mana.cache.set(key, args.object, args.fn);
+        }
+      }
     }
+
+    //
+    // Nothing, no cache or matching methods.
+    //
+    args.fn();
   });
 
   return this;
@@ -385,7 +401,9 @@ Mana.prototype.send = function send(args) {
     options.headers[header.key] = header.value;
   });
 
-  this.fireforget('get', { key: args.str }, function fn(err, cache) {
+  mana.fireforget('get', {
+    key: 'GET' === options.method ? args.str : null
+  }, function fn(err, cache) {
     //
     // We simply do not care about cache issues, but we're gonna make sure we
     // make the cache result undefined as we don't know what was retreived.
@@ -425,7 +443,11 @@ Mana.prototype.send = function send(args) {
         // We had a successful cache hit, use our cached result as response
         // body.
         //
-        if (res.statusCode === 304 && cache) return assign.write(cache.data, { end: true });
+        if (304 === res.statusCode && cache) {
+          debug('CACHE HIT, using cached data for URL', options.uri);
+          return assign.write(cache.data, { end: true });
+        }
+
         if (res.statusCode !== 200 && res.statusCode !== 404) {
           //
           // Assume that the server is returning an unknown response and that we
@@ -485,6 +507,7 @@ Mana.prototype.send = function send(args) {
         // responses body usually referrer back to the content that got posted.
         //
         if (res.headers.etag && 'GET' === options.method) {
+          if (cache) debug('CACHE MISS, updating cache for URL %s', options.uri);
           mana.fireforget('set', {
             etag: res.headers.etag,
             key: args.str,
