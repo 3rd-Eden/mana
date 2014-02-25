@@ -281,6 +281,38 @@ Mana.prototype.view = function view(args) {
 };
 
 /**
+ * Simple wrapper around a possible cache interface.
+ *
+ * @param {String} str The method of the cache we want to invoke (get/set)
+ * @param {Object} object The data that needs to be stored.
+ * @param {Function} fn The optional callback.
+ * @api private
+ */
+Mana.prototype.fireforget = function fireforget(args) {
+  args = this.args(arguments);
+  args.fn = args.fn || function nope() {};
+
+  var key = args.object.key;
+
+  //
+  // Force asynchronous execution of cache retrieval without starving I/O
+  //
+  (global.setImmediate ? global.setImmediate : global.setTimeout)(function immediate() {
+    if ('get' === args.string && this.cache) {
+      if (this.cache.get.length === 1) args.fn(undefined, this.cache.get(key));
+      else this.cache.get(key, args.fn);
+    } else if ('set' === args.string && this.cache) {
+      if (this.cache.set.length === 2) args.fn(undefined, this.cache.set(key, args.object));
+      else this.cache.set(key, args.object, args.fn);
+    } else {
+      args.fn();  // Nothing, no cache or matching methods.
+    }
+  });
+
+  return this;
+};
+
+/**
  * Query against a given API endpoint.
  *
  * @param {Arguments} args
@@ -353,82 +385,147 @@ Mana.prototype.send = function send(args) {
     options.headers[header.key] = header.value;
   });
 
-  this.downgrade(mirrors, function downgraded(err, root, next) {
-    options.uri = url.resolve(root, args.str);
+  this.fireforget('get', { key: args.str }, function fn(err, cache) {
+    //
+    // We simply do not care about cache issues, but we're gonna make sure we
+    // make the cache result undefined as we don't know what was retreived.
+    //
+    if (err || 'object' !== mana.type(cache)) cache = undefined;
 
-    /**
-     * Handle the requests.
-     *
-     * @param {Error} err Optional error argument.
-     * @param {Object} res HTTP response object.
-     * @param {String} body The registry response.
-     * @api private
-     */
-    function parse(err, res, body) {
-      if (err || !res || res.statusCode !== 200) {
-        if (err) err = err.message;
-        else err = 'Received an invalid status code %s when requesting URL %s';
-
-        debug(err, res ? res.statusCode : '', options.uri);
-        return next();
-      }
-
-      mana.ratereset = +res.headers['x-rate-limit-reset'] || mana.ratereset;
-      mana.ratelimit = +res.headers['x-rate-limit-limit'] || mana.ratelimit;
-      mana.remaining = +res.headers['x-rate-limit-remaining'] || mana.remaining;
-
+    if (cache) {
       //
-      // In this case I prefer to manually parse the JSON response as it allows us
-      // to return more readable error messages.
+      // As we're caching data from a remote server we don't know if our cache
+      // has been expired or not so we need to send a non-match header to the
+      // API server and hope that we trigger an 304 request so we can use our
+      // cached result.
       //
-      var data = body;
+      options.headers['If-None-Match'] = cache.etag;
+    }
 
-      if (
-        'string' === typeof data
-        && !~options.headers.Accept.indexOf('text')
-        && !~options.headers.Accept.indexOf('html')
-        && 'HEAD' !== options.method
-      ) {
-        try { data = JSON.parse(body); }
-        catch (e) {
-          debug('Failed to parse JSON: %s for %s', e.message, options.uri);
+    mana.downgrade(mirrors, function downgraded(err, root, next) {
+      options.uri = url.resolve(root, args.str);
+
+      /**
+       * Handle the requests.
+       *
+       * @param {Error} err Optional error argument.
+       * @param {Object} res HTTP response object.
+       * @param {String} body The registry response.
+       * @api private
+       */
+      function parse(err, res, body) {
+        if (err) {
+          debug('Received an error (%s) for URL %s', err.message, options.uri);
+
+          err.statusCode = 500; // Force statusCode
+          return assign.destroy(err);
+        }
+
+        //
+        // We had a successful cache hit, use our cached result as response
+        // body.
+        //
+        if (res.statusCode === 304 && cache) return assign.write(cache.data, { end: true });
+        if (res.statusCode !== 200 && res.statusCode !== 404) {
+          //
+          // Assume that the server is returning an unknown response and that we
+          // should try a different server.
+          //
+          debug('Received an invalid statusCode (%s) for URL %s', res.statusCode, options.uri);
           return next();
         }
+
+        mana.ratereset = +res.headers['x-rate-limit-reset'] || mana.ratereset;
+        mana.ratelimit = +res.headers['x-rate-limit-limit'] || mana.ratelimit;
+        mana.remaining = +res.headers['x-rate-limit-remaining'] || mana.remaining;
+
+        //
+        // In this case I prefer to manually parse the JSON response as it
+        // allows us to return more readable error messages.
+        //
+        var data = body;
+
+        if (
+          'string' === typeof data
+          && !~options.headers.Accept.indexOf('text')
+          && !~options.headers.Accept.indexOf('html')
+          && 'HEAD' !== options.method
+        ) {
+          try { data = JSON.parse(body); }
+          catch (e) {
+            //
+            // Failed to parse response, it was something completely different
+            // then we originally expected so it could be that the server
+            // is down and returned an error page, so we need to continue to
+            // a different server.
+            //
+            debug('Failed to parse JSON: %s for URL %s', e.message, options.uri);
+            return next();
+          }
+        }
+
+        //
+        // Special case for 404 requests, it's technically not an error, but
+        // it's also not a valid response from the server so if we're going to
+        // write it to our Assign instance it could cause issues as the data
+        // format might differ. So instead we're going to call this as an error.
+        //
+        if (res.statusCode === 404 && 'HEAD' !== options.method) {
+          err = new Error('Invalid status code: 404');
+          err.statusCode = 404;
+          err.data = data;
+          return assign.destroy(err);
+        }
+
+        //
+        // Check if we need to cache the data internally. Caching is done using
+        // a fire and forget pattern so we don't slow down in returning this
+        // result. Most cache implementation would be done in a fraction of
+        // a second anyways. We should also only cache GET requests as POST
+        // responses body usually referrer back to the content that got posted.
+        //
+        if (res.headers.etag && 'GET' === options.method) {
+          mana.fireforget('set', {
+            etag: res.headers.etag,
+            key: args.str,
+            data: data
+          });
+        }
+
+        if ('HEAD' !== options.method) assign.write(data, { end: true });
+        else assign.write({ res: res, data: data }, { end: true });
       }
 
-      if ('HEAD' !== options.method) assign.write(data, { end: true });
-      else assign.write({ res: res, data: data }, { end: true });
-    }
-
-    //
-    // The error indicates that we've ran out of mirrors, so we should try
-    // a back off operation against the default npm registry, which is provided
-    // by the callback. If the back off fails, we should completely give up and
-    // return an useful error back to the client.
-    //
-    if (!err) {
-      debug('requesting url %s', options.uri);
-      return request(options, parse);
-    }
-
-    back(function toTheFuture(err, backoff) {
-      options.backoff = backoff;
-
-      debug(
-        'Starting request again to %s after back off attempt %s/%s',
-        options.uri,
-        backoff.attempt,
-        backoff.retries
-      );
-
-      if (!err) return request(options, parse);
-
       //
-      // Okay, we can assume that shit is seriously wrong here.
+      // The error indicates that we've ran out of mirrors, so we should try
+      // a back off operation against the default npm registry, which is
+      // provided by the callback. If the back off fails, we should completely
+      // give up and return an useful error back to the client.
       //
-      debug('We failed to fetch %s, all servers are down.', options.uri);
-      assign.destroy(new Error('Failed to process request'));
-    }, options.backoff);
+      if (!err) {
+        debug('requesting url %s', options.uri);
+        return request(options, parse);
+      }
+
+      back(function toTheFuture(err, backoff) {
+        options.backoff = backoff;
+
+        debug(
+          'Starting request again to %s after back off attempt %s/%s',
+          options.uri,
+          backoff.attempt,
+          backoff.retries
+        );
+
+        if (!err) return request(options, parse);
+
+        //
+        // Okay, we can assume that shit is seriously wrong here.
+        //
+        debug('We failed to fetch %s, all servers are down.', options.uri);
+        assign.destroy(new Error('Failed to process request'));
+      }, options.backoff);
+    });
   });
 
   return assign;
