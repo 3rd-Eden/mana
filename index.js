@@ -1,6 +1,7 @@
 'use strict';
 
-var debugFactory = require('debug')
+var EventEmitter = require('eventemitter3')
+  , debugFactory = require('debug')
   , debug = debugFactory('mana')
   , request = require('request')
   , qs = require('querystring')
@@ -34,12 +35,20 @@ function Mana() {
   //
   this.debug = debugFactory('mana:'+ this.name);
 
+  //
+  // Make sure all default properties are added for EventEmitters.
+  //
+  EventEmitter.call(this);
+
   if ('function' === this.type(this.initialise)) {
     this.initialise.apply(this, arguments);
+    if (!this.api) {
+      this.debug('Missing a required `api` property %s', (new Error()).stack);
+    }
   }
 }
 
-fuse(Mana);
+fuse(Mana, EventEmitter);
 
 /**
  * Default configuration for the build-in randomized exponential back off.
@@ -428,6 +437,7 @@ Mana.prototype.send = function send(args) {
     }
 
     mana.downgrade(mirrors, function downgraded(err, root, next) {
+      mana.debug('resolving url from with root: %s and path: %s', root, args.str);
       options.uri = url.resolve(root, args.str);
 
       /**
