@@ -1,6 +1,6 @@
 {
   "name": "mana",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "mana potion",
   "main": "index.js",
   "scripts": {
@@ -32,7 +32,8 @@
     "debug": "0.7.x",
     "fusing": "0.0.x",
     "ms": "0.6.x",
-    "request": "2.34.x"
+    "request": "2.34.x",
+    "eventemitter3": "0.1.x"
   },
   "devDependencies": {
     "mocha": "1.17.x",
