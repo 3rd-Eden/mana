@@ -437,9 +437,6 @@ Mana.prototype.send = function send(args) {
     }
 
     mana.downgrade(mirrors, function downgraded(err, root, next) {
-      mana.debug('resolving url from with root: %s and path: %s', root, args.str);
-      options.uri = url.resolve(root, args.str);
-
       /**
        * Handle the requests.
        *
@@ -545,6 +542,7 @@ Mana.prototype.send = function send(args) {
       // give up and return an useful error back to the client.
       //
       if (!err) {
+        options.uri = url.resolve(root, args.str);
         mana.debug('requesting url %s', options.uri);
         return request(options, parse);
       }
