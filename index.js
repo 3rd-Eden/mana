@@ -769,6 +769,11 @@ Mana.drink = function drink(module) {
 };
 
 //
+// Expose our token interface on the module.
+//
+Mana.Token = Token;
+
+//
 // Expose this module.
 //
 module.exports = Mana;
