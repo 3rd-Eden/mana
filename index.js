@@ -291,7 +291,8 @@ Mana.prototype.type = function type(of) {
  * @api private
  */
 Mana.prototype.downgrade = function downgrade(mirrors, fn) {
-  var source = mirrors[0];
+  var source = mirrors[0]
+    , errors = [];
 
   //
   // Remove duplicates as we don't want to test against the same server twice as
@@ -303,13 +304,19 @@ Mana.prototype.downgrade = function downgrade(mirrors, fn) {
     return all.indexOf(item) === i;
   });
 
-  (function recursive() {
+  (function recursive(err) {
     var api = mirrors.shift();
+
+    //
+    // If we received an error, we probably want to queue it up so we know what
+    // triggered the decision to downgrade to a different API endpoint.
+    //
+    if (err) errors.push(err);
 
     //
     // We got a valid api endpoint that we can query against.
     //
-    if (api) return fn(undefined, api, recursive);
+    if (api) return fn(undefined, api, recursive, errors);
 
     //
     // No valid api endpoints available, the callback should start an back off
@@ -318,7 +325,8 @@ Mana.prototype.downgrade = function downgrade(mirrors, fn) {
     fn(
       new Error('No more API endpoints available, everything is down'),
       source,
-      recursive
+      recursive,
+      errors
     );
   }());
 
@@ -500,11 +508,11 @@ Mana.prototype.send = function send(args) {
   }, function fn(err, cache) {
     //
     // We simply do not care about cache issues, but we're gonna make sure we
-    // make the cache result undefined as we don't know what was retreived.
+    // make the cache result undefined as we don't know what was retrieved.
     //
     if (err || 'object' !== mana.type(cache)) cache = undefined;
 
-    if (cache) {
+    if (cache && cache.etag) {
       //
       // As we're caching data from a remote server we don't know if our cache
       // has been expired or not so we need to send a non-match header to the
@@ -514,7 +522,7 @@ Mana.prototype.send = function send(args) {
       options.headers['If-None-Match'] = cache.etag;
     }
 
-    mana.downgrade(mirrors, function downgraded(err, root, next) {
+    mana.downgrade(mirrors, function downgraded(err, root, next, errors) {
       /**
        * Handle the requests.
        *
@@ -527,8 +535,12 @@ Mana.prototype.send = function send(args) {
         if (err) {
           mana.debug('Received an error (%s) for URL %s', err.message, options.uri);
 
-          err.url = options.uri;
-          err.statusCode = 500; // Force statusCode
+          err.url = options.uri;  // The URL we accessed.
+          err.statusCode = 500;   // Force status code.
+          err.errors = errors;    // Previous errors.
+          err.body = body;        // The response body.
+          err.data = {};          // The parsed data.
+
           return assign.destroy(err);
         }
 
@@ -559,7 +571,7 @@ Mana.prototype.send = function send(args) {
         // API / OAuth tokens that we can use to request this API. So we're
         // going to roll the dice and hopefully get a working API key
         //
-        if (403 === res.statusCode && mana.tokens.length && mana.remaining === 0) {
+        if (403 === res.statusCode && mana.tokens.length && 0 === mana.remaining) {
           if (mana.roll()) {
             options.headers.Authorization = mana.authorization;
 
@@ -567,7 +579,7 @@ Mana.prototype.send = function send(args) {
             // We've upgrade the header with new authorization information so
             // attempt again with the same URL.
             //
-            return downgraded(undefined, root, next);
+            return downgraded(undefined, root, next, errors);
           }
         }
 
@@ -577,7 +589,15 @@ Mana.prototype.send = function send(args) {
           // should try a different server.
           //
           mana.debug('Received an invalid statusCode (%s) for URL %s', res.statusCode, options.uri);
-          return next();
+          err = new Error('Received a non 200 status code: '+ res.statusCode);
+
+          err.url = options.uri;  // The URL we accessed.
+          err.statusCode = 500;   // Force status code.
+          err.errors = errors;    // Previous errors.
+          err.body = body;        // The response body.
+          err.data = {};          // Parsed response.
+
+          return next(err);
         }
 
         //
@@ -601,7 +621,14 @@ Mana.prototype.send = function send(args) {
             // a different server.
             //
             mana.debug('Failed to parse JSON: %s for URL %s', e.message, options.uri);
-            return next();
+
+            e.url = options.uri;  // The URL we accessed.
+            e.statusCode = 500;   // Force status code.
+            e.errors = errors;    // Previous errors.
+            e.body = body;        // The response body.
+            e.data = {};          // Parsed response.
+
+            return next(e);
           }
         }
 
@@ -613,9 +640,13 @@ Mana.prototype.send = function send(args) {
         //
         if (res.statusCode === 404 && 'HEAD' !== options.method) {
           err = new Error('Invalid status code: 404');
-          err.url = options.uri;
-          err.statusCode = 404;
-          err.data = data;
+
+          err.url = options.uri;  // URL of the request.
+          err.statusCode = 404;   // Status code.
+          err.errors = errors;    // Previous errors.
+          err.body = body;        // The response body.
+          err.data = data;        // Parsed response.
+
           return assign.destroy(err);
         }
 
@@ -651,7 +682,7 @@ Mana.prototype.send = function send(args) {
         return request(options, parse);
       }
 
-      back(function toTheFuture(err, backoff) {
+      back(function toTheFuture(failure, backoff) {
         options.backoff = backoff;
 
         mana.debug(
@@ -661,13 +692,21 @@ Mana.prototype.send = function send(args) {
           backoff.retries
         );
 
-        if (!err) return request(options, parse);
+        if (!failure) return request(options, parse);
 
         //
         // Okay, we can assume that shit is seriously wrong here.
         //
         mana.debug('We failed to fetch %s, all servers are down.', options.uri);
-        assign.destroy(new Error('Failed to process request'));
+        failure = new Error('Failed to process request: '+ err.message);
+
+        failure.url = options.url;
+        failure.statusCode = 500;
+        failure.errors = errors;
+        failure.body = '';
+        failure.data = {};
+
+        assign.destroy(failure);
       }, options.backoff);
     });
   });
