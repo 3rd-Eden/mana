@@ -30,7 +30,7 @@
     "assign": "0.1.x",
     "back": "0.1.x",
     "debug": "0.7.x",
-    "fusing": "0.0.x",
+    "fusing": "0.1.x",
     "ms": "0.6.x",
     "request": "2.34.x",
     "eventemitter3": "0.1.x"
