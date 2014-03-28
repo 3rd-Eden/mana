@@ -45,17 +45,42 @@ describe('mana', function () {
       expect(mana.args([new Date])).to.have.property('date');
     });
 
-    it('parses multiple types correctly');
+    it('parses multiple types correctly', function () {
+      var types = mana.args([{}, 'str']);
+
+      expect(types).to.have.property('string');
+      expect(types).to.have.property('object');
+    });
   });
 
-  describe('#of', function () {
-    it('detects array');
-    it('detects regexp');
-    it('detects function');
-    it('detects string');
-    it('detects error');
-    it('detects date');
-    it('detects object');
+  describe('#type', function () {
+    it('detects array', function () {
+      expect(mana.type([])).to.equal('array');
+    });
+
+    it('detects regexp', function () {
+      expect(mana.type(/\//)).to.equal('regexp');
+    });
+
+    it('detects function', function () {
+      expect(mana.type(function() {})).to.equal('function');
+    });
+
+    it('detects string', function () {
+      expect(mana.type('string')).to.equal('string');
+    });
+
+    it('detects error', function () {
+      expect(mana.type(new Error())).to.equal('error');
+    });
+
+    it('detects date', function () {
+      expect(mana.type(new Date())).to.equal('date');
+    });
+
+    it('detects object', function () {
+      expect(mana.type({})).to.equal('object');
+    });
   });
 
   describe('#downgrade', function () {
