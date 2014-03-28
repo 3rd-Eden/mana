@@ -89,3 +89,58 @@ describe('mana', function () {
     it('gives an error when its out of mirrors');
   });
 });
+
+describe('Tokens', function () {
+  'use strict';
+
+  var Mana = require('../')
+    , chai = require('chai')
+    , expect = chai.expect
+    , Token = Mana.Token;
+
+  var token = new Token('foo')
+    , mana = new Mana();
+
+  it('sets all values to Infinity', function () {
+    expect(token.ratelimit).to.equal(Infinity);
+    expect(token.ratereset).to.equal(Infinity);
+    expect(token.remaining).to.equal(Infinity);
+  });
+
+  it('transforms the given token to an correct Authorization header value', function () {
+    expect(token.authorization).to.equal('token foo');
+  });
+
+  describe("#available", function () {
+    beforeEach(function () {
+      token.ratelimit = 0;
+      token.ratereset = 0;
+      token.remaining = 0;
+    });
+
+    it('is unavailable if values are null', function () {
+      expect(token.available()).to.equal(false);
+    });
+
+    it('is available when fist initialised', function () {
+      expect((new Token()).available()).to.equal(true);
+    });
+
+    it('is available if it has remaining rates', function () {
+      expect(token.available()).to.equal(false);
+
+      token.remaining = 1;
+      expect(token.available()).to.equal(true);
+    });
+
+    it('is available if our rate has been reset', function () {
+      expect(token.available()).to.equal(false);
+
+      token.ratereset = Date.now() / 1000;
+      expect(token.available()).to.equal(true);
+
+      token.ratereset = (Date.now() / 1000) + 10;
+      expect(token.available()).to.equal(false);
+    });
+  });
+});
