@@ -1,10 +1,19 @@
 # mana
 
-Mana is small package that provides a really simple basic structure for creating
-API clients. Take your mana potion and start creating magical api clients.
+Mana is an small package that provides basic and a dead simple API structure for
+creating high performance API clients. Take your mana potion and start creating
+magical API clients which contain the following powers:
 
-_Please note that this module is used to create API's that **I** like to use, so
-it's highly opinionated in the way it's setup_
+- **Rolling tokens** Supports multiple OAuth tokens which will be switched when
+  rate limits are hit.
+- **Callback queue** Multiple requests calls to the same URL will result in a
+  single call.
+- **Mirrors** When API endpoints become unresponsive, alternate replica's or
+  mirrors API's can be hit instead.
+- **Back off** Build in exponential back off when the API endpoint returns an
+  error or error code.
+- **Conditional requests** Requests with Etags can be cached and result will be
+  reused when a 304 is returned. (Supports async and sync cache engines.)
 
 ## Installation
 
