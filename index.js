@@ -158,17 +158,31 @@ Mana.prototype.roll = function roll() {
   var token = this.tokens.filter(function filter(token) {
     return token.available();
   }).sort(function sort(a, b) {
-    return a.remaining > b.remaining;
-  }).pop();
+    if (a.remaining !== b.remaining) {
+      if (a.remaining < b.remaining) return -1;
+      if (a.remaining > b.remaining) return 1;
+      return 0;
+    }
+
+    if (a.ratelimit < b.ratelimit) return -1;
+    if (a.ratelimit > b.ratelimit) return 1;
+    return 0;
+  }).shift();
 
   if (!token) return false;
 
-  this.authorization = token;
+  this.authorization = token.authorization;
   return true;
 };
 
+/**
+ * Transform the tokens array to Token instances.
+ *
+ * @api private
+ */
 Mana.prototype.tokenizer = function tokenizer() {
   this.tokens = this.tokens.map(function tokenizing(OAuth) {
+    if (OAuth instanceof Token) return OAuth;
     return new Token(OAuth);
   });
 
