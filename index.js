@@ -22,12 +22,21 @@ var toString = Object.prototype.toString
  *
  * @constructor
  * @param {String} OAuth The OAuth token.
+ * @param {Object} options Optional options.
  * @api public
  */
-function Token(OAuth) {
+function Token(OAuth, options) {
+  if (!(this instanceof Token)) return new Token(OAuth, options);
+
+  options = options || {};
+
+  options.timeout = 'timeout' in options ? options.timeout : 50;
+
+  this.cooldown = false;
   this.ratelimit = Infinity;
   this.ratereset = Infinity;
   this.remaining = Infinity;
+  this.timeout = options.timout;
   this.authorization = 'token '+ OAuth;
 }
 
@@ -38,9 +47,43 @@ function Token(OAuth) {
  * @api public
  */
 Token.prototype.available = function available() {
-  return this.ratelimit === Infinity                        // First use, unknown state.
-  || this.ratereset && Date.now() >= (this.ratereset * 1000)// Rate limit has reset.
-  || this.remaining > 0;                                    // We still tokens remaining.
+  var reset = this.ratereset && Date.now() >= (this.ratereset * 1000);
+
+  //
+  // We're in our cool down phase. We temporarily disable this token to ensure
+  // that other tokens can be rolled in.
+  //
+  if (this.cooldown) {
+    if ((this.cooldown + this.timeout) > Date.now()) return false;
+    this.cooldown = false;
+  }
+
+  //
+  // This token should be reset by the server, so we can attempt to reset the
+  // `remaining` api calls to the original rate limit.
+  //
+  if (reset && this.ratelimit >= 0 && this.ratelimit !== Infinity) {
+    this.remaining = this.ratelimit;
+  }
+
+  return this.ratelimit === Infinity    // First use, unknown state.
+  || this.remaining > 0                 // We still tokens remaining.
+  || reset;                             // Rate limit has reset.
+};
+
+/**
+ * Token has been returned to the pool.
+ *
+ * @param {Mana} mana The mana instance that used the taken
+ * @api public
+ */
+Token.prototype.returned = function returned(mana) {
+  this.remaining = mana.remaining;
+  this.ratereset = mana.ratereset;
+  this.ratelimit = mana.ratelimit;
+  this.cooldown = Date.now();
+
+  return this;
 };
 
 /**
@@ -143,17 +186,18 @@ Mana.prototype._view = '/-/_view/';
  * @api private
  */
 Mana.prototype.roll = function roll() {
+  var mana = this;
+
   //
   // Find the current token in our token set so we can update it's `ratelimit`
   // and `ratereset` value's
   //
   this.tokens.some(function some(token) {
-    if (this.authorization !== token.authorization) return false;
+    if (mana.authorization !== token.authorization) return false;
 
-    token.remaining = this.remaining;
-    token.ratereset = this.ratereset;
-    token.ratelimit = this.ratelimit;
-  }, this);
+    token.returned(mana);
+    return true;
+  });
 
   var token = this.tokens.filter(function filter(token) {
     return token.available();
@@ -170,6 +214,7 @@ Mana.prototype.roll = function roll() {
   }).shift();
 
   if (!token) return false;
+  console.log('token', token.available());
 
   this.authorization = token.authorization;
   return true;
