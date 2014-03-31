@@ -214,7 +214,6 @@ Mana.prototype.roll = function roll() {
   }).shift();
 
   if (!token) return false;
-  console.log('token', token.available());
 
   this.authorization = token.authorization;
   return true;
