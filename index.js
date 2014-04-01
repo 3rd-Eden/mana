@@ -2,7 +2,6 @@
 
 var EventEmitter = require('eventemitter3')
   , debugFactory = require('debug')
-  , debug = debugFactory('mana')
   , request = require('request')
   , qs = require('querystring')
   , Assign = require('assign')
@@ -99,6 +98,7 @@ function Mana() {
   this.remaining = 0;                   // How many API calls are remaining.
   this.ratelimit = 0;                   // The amount of API calls allowed.
   this.ratereset = 0;                   // In how many seconds is the rate limit reset.
+  this.tokens = [];                     // Our default API tokens.
 
   //
   // Create a debug method that correctly prefixes log messages with `mana` and
@@ -119,10 +119,6 @@ function Mana() {
     this.debug('Missing a required `api` property %s', (new Error()).stack);
   }
 
-  //
-  // Default this so we don't have an undefined reference
-  //
-  this.tokens = this.tokens || [];
   //
   // We support rolling OAuth tokens as some services are absurdly rate limited
   // and a way to avoid these limits is to use a rolling token system where it
@@ -633,9 +629,19 @@ Mana.prototype.send = function send(args) {
         // API / OAuth tokens that we can use to request this API. So we're
         // going to roll the dice and hopefully get a working API key
         //
-        if (403 === res.statusCode && mana.tokens.length && 0 === mana.remaining) {
+        if (
+             mana.tokens.length
+           && (
+             (403 === res.statusCode && 0 === mana.remaining)
+             || 401 === res.statusCode
+           )
+        ) {
+          if (401 === res.statusCode) mana.debug('Received a 401 on our access token, trying another token');
+          else mana.debug('Weve reached our API limit, trying another token');
+
           if (mana.roll()) {
             options.headers.Authorization = mana.authorization;
+            mana.debug('Successfully switched from authorization tokens');
 
             //
             // We've upgrade the header with new authorization information so
@@ -646,6 +652,7 @@ Mana.prototype.send = function send(args) {
         }
 
         if (200 !== res.statusCode && 404 !== res.statusCode) {
+
           //
           // Assume that the server is returning an unknown response and that we
           // should try a different server.
@@ -784,7 +791,8 @@ Mana.prototype.send = function send(args) {
  * @returns {Mana}
  */
 Mana.drink = function drink(module) {
-  var path = require('path')
+  var debug = debugFactory('mana')
+    , path = require('path')
     , fs = require('fs')
     , Potion = this;
 
