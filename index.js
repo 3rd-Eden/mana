@@ -120,6 +120,10 @@ function Mana() {
   }
 
   //
+  // Default this so we don't have an undefined reference
+  //
+  this.tokens = this.tokens || [];
+  //
   // We support rolling OAuth tokens as some services are absurdly rate limited
   // and a way to avoid these limits is to use a rolling token system where it
   // iterates over the api tokens and gets the next working one.
