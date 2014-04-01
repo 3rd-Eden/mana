@@ -129,7 +129,7 @@ function Mana() {
   // iterates over the api tokens and gets the next working one.
   //
   if (Array.isArray(this.tokens) && this.tokens.length) {
-    this.tokenizer();
+    this.tokenizer().roll();
   }
 }
 
