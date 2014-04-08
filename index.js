@@ -179,6 +179,51 @@ Mana.prototype.name = require('./package.json').name;
 Mana.prototype._view = '/-/_view/';
 
 /**
+ * Extract and compile.
+ *
+ * @param {Object} options The supplied options where we extract qs params.
+ * @param {Array|Object} allowed The querystring's we allow.
+ * @returns {String}
+ * @api public
+ */
+Mana.prototype.querystringify = function querystringify(options, allowed) {
+  var object = this.type(allowed) === 'object'
+    , querystring = {}
+    , mana = this
+    , query;
+
+  //
+  // Extract the keys and default values from the `allowed` argument. If we've
+  // been given an object, extract the keys and assume that the values of the
+  // object are the default values for the query. If the value has been set to
+  // `undefined` we will not use it as a default value and ignore the param.
+  // We're re-using the `querystring` variable as `defaults` object as it's
+  // already empty so all our `key in defaults` check will fail if we're given
+  // an array.
+  //
+  var keys = object ? Object.keys(allowed) : allowed
+    , defaults = object ? allowed : querystring;
+
+  keys.forEach(function each(key) {
+    var value = key in defaults && mana.type(defaults[key]) !== 'undefined'
+      , has = key in options;
+
+    if (!has && !value) return; // No defaults, no value, bail out.
+
+    querystring[key] = has ? options[key] : defaults[key];
+
+    //
+    // This key was intended as query string value, remove it from our options
+    // object.
+    //
+    delete options[key];
+  });
+
+  query = qs.stringify(querystring);
+  return query ? '?'+ query : '';
+};
+
+/**
  * Shake'n'roll the tokens to get a token with the highest likelihood of
  * working.
  *
@@ -378,7 +423,7 @@ Mana.prototype.downgrade = function downgrade(mirrors, fn) {
 
     //
     // No valid api endpoints available, the callback should start an back off
-    // operation against the default provided source
+    // operation against the default provided source.
     //
     fn(
       new Error('No more API endpoints available, everything is down'),
@@ -502,7 +547,9 @@ Mana.prototype.send = function send(args) {
   // Automatically assume that people want to transform an array in to
   // joined/paths/names if no string is supplied but we do have an array.
   //
-  if (!args.str && args.array) args.str = args.array.join('/');
+  if (!args.str && args.array) {
+    args.str = args.array.filter(Boolean).join('/');
+  }
 
   var mana = this
     , options = args.options || {}
@@ -543,7 +590,7 @@ Mana.prototype.send = function send(args) {
   [
     {
       key: 'User-Agent',
-      value: 'mana/'+ this.version + ' node/'+ process.version
+      value: this.name +'/'+ this.version +' node/'+ process.version
     }, {
       key: 'Authorization',
       value: this.authorization

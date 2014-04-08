@@ -56,6 +56,37 @@ describe('mana', function () {
     });
   });
 
+  describe('#querystringify', function () {
+    it('returns an empty string if no querystring can be made', function () {
+      expect(mana.querystringify({}, {})).to.equal('');
+      expect(mana.querystringify({}, [])).to.equal('');
+      expect(mana.querystringify({}, ['foo'])).to.equal('');
+    });
+
+    it('prefixes the querystring with a ?', function () {
+      expect(mana.querystringify({ foo: 'bar' }, ['foo'])).to.equal('?foo=bar');
+    });
+
+    it('supports default query strings but ignores `undefined` as value', function () {
+      expect(mana.querystringify({}, { foo: 'bar' })).to.equal('?foo=bar');
+      expect(mana.querystringify({}, { foo: undefined })).to.equal('');
+      expect(mana.querystringify({}, { foo: 0 })).to.equal('?foo=0');
+      expect(mana.querystringify({}, { foo: 0, bar: 'bar' })).to.equal('?foo=0&bar=bar');
+    });
+
+    it('removes the found querystrings from the first options argument', function () {
+      var options = {
+        foo: 'bar',
+        bar: 'foo'
+      }, query = mana.querystringify(options, ['foo']);
+
+      expect(query).to.equal('?foo=bar');
+      expect(options).to.not.have.property('foo');
+      expect(options.bar).to.equal('foo');
+      expect(Object.keys(options).length).to.equal(1);
+    });
+  });
+
   describe('#type', function () {
     it('detects array', function () {
       expect(mana.type([])).to.equal('array');
