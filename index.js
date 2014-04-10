@@ -179,30 +179,42 @@ Mana.prototype.name = require('./package.json').name;
 Mana.prototype._view = '/-/_view/';
 
 /**
- * Extract and compile.
+ * Extract and compile a querystring.
  *
- * @param {Object} options The supplied options where we extract qs params.
- * @param {Array|Object} allowed The querystring's we allow.
+ * @param {Object} options The supplied options where we extract parameters.
+ * @param {Array|Object} allowed Parameters we allow.
  * @returns {String}
  * @api public
  */
-Mana.prototype.querystringify = function querystringify(options, allowed) {
+Mana.prototype.querystring = function querystringify(options, allowed) {
+  var query = qs.stringify(this.json(options, allowed));
+  return query ? '?'+ query : '';
+};
+
+/**
+ * Create an object of parameters that could get posted to a server.
+ *
+ * @param {Object} options The supplied options where we extract parameters.
+ * @param {Array|Object} allowed Parameters we allow.
+ * @returns {Object}
+ * @api public
+ */
+Mana.prototype.json = function jsonify(options, allowed) {
   var object = this.type(allowed) === 'object'
-    , querystring = {}
     , mana = this
-    , query;
+    , data = {};
 
   //
   // Extract the keys and default values from the `allowed` argument. If we've
   // been given an object, extract the keys and assume that the values of the
   // object are the default values for the query. If the value has been set to
   // `undefined` we will not use it as a default value and ignore the param.
-  // We're re-using the `querystring` variable as `defaults` object as it's
+  // We're re-using the `data` variable as `defaults` object as it's
   // already empty so all our `key in defaults` check will fail if we're given
   // an array.
   //
   var keys = object ? Object.keys(allowed) : allowed
-    , defaults = object ? allowed : querystring;
+    , defaults = object ? allowed : data;
 
   keys.forEach(function each(key) {
     var value = key in defaults && mana.type(defaults[key]) !== 'undefined'
@@ -210,7 +222,7 @@ Mana.prototype.querystringify = function querystringify(options, allowed) {
 
     if (!has && !value) return; // No defaults, no value, bail out.
 
-    querystring[key] = has ? options[key] : defaults[key];
+    data[key] = has ? options[key] : defaults[key];
 
     //
     // This key was intended as query string value, remove it from our options
@@ -219,8 +231,7 @@ Mana.prototype.querystringify = function querystringify(options, allowed) {
     delete options[key];
   });
 
-  query = qs.stringify(querystring);
-  return query ? '?'+ query : '';
+  return data;
 };
 
 /**
@@ -570,6 +581,22 @@ Mana.prototype.send = function send(args) {
     retries: 'retries' in options ? options.retires : this.retries,
     factor: 'factor' in options ? options.factor : this.factor
   };
+
+  //
+  // We've been supplied a bunch of parameters, assume that they need to be send
+  // to the server. If we receive a `GET` request it will be appended as
+  // query string all other cases we assume that it should be send as request
+  // body.
+  //
+  if (options.params) {
+    if ('GET' === options.method) {
+      args.str += this.querystringy(options, options.params);
+    } else {
+      options.json = this.json(options, options.params);
+    }
+
+    delete options.params;
+  }
 
   //
   // Optimization: Check if we're already running a request for this given API
