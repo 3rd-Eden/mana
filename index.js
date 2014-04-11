@@ -235,6 +235,30 @@ Mana.prototype.json = function jsonify(options, allowed) {
 };
 
 /**
+ * Simple bail out function while still maintaining the async flow.
+ *
+ * @param {Function} fn The callback.
+ * @param {Error} err Optional error argument.
+ * @param {Mixed} data The data that should be written.
+ * @returns {Assign}
+ * @api public
+ */
+Mana.prototype.bail = function bail(fn, err, data) {
+  var assign = new Assign(this, fn);
+
+  (
+    global.setImmediate
+    ? global.setImmediate
+    : global.setTimeout
+  )(function immediate() {
+    if (err) assign.destroy(err);
+    assign.write(data, { end: true });
+  });
+
+  return assign;
+};
+
+/**
  * Shake'n'roll the tokens to get a token with the highest likelihood of
  * working.
  *
