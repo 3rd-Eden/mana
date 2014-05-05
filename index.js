@@ -270,6 +270,11 @@ Mana.prototype.roll = function roll() {
   var mana = this;
 
   //
+  // There is no need to re-roll, we still have remaning tokens.
+  //
+  if (this.remaining) return true;
+
+  //
   // Find the current token in our token set so we can update it's `ratelimit`
   // and `ratereset` value's
   //
