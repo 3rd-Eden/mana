@@ -267,7 +267,8 @@ Mana.prototype.bail = function bail(fn, err, data) {
  * @api private
  */
 Mana.prototype.roll = function roll() {
-  var mana = this;
+  var mana = this
+    , tokens;
 
   //
   // There is no need to re-roll, we still have remaning tokens.
@@ -285,7 +286,7 @@ Mana.prototype.roll = function roll() {
     return true;
   });
 
-  var token = this.tokens.filter(function filter(token) {
+  tokens = this.tokens.filter(function filter(token) {
     return token.available();
   }).sort(function sort(a, b) {
     if (a.remaining !== b.remaining) {
@@ -297,11 +298,11 @@ Mana.prototype.roll = function roll() {
     if (a.ratelimit < b.ratelimit) return -1;
     if (a.ratelimit > b.ratelimit) return 1;
     return 0;
-  }).shift();
+  });
 
-  if (!token) return false;
+  if (!tokens.length) return false;
 
-  this.authorization = token.authorization;
+  this.authorization = tokens[0].authorization;
   return true;
 };
 
