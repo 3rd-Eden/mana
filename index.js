@@ -711,9 +711,9 @@ Mana.prototype.send = function send(args) {
         // rate limit, so make sure we parse that out before we start handling
         // potential errors.
         //
-        var ratereset = +res.headers['x-rate-limit-reset']
-          , ratelimit = +res.headers['x-rate-limit-limit']
-          , remaining = +res.headers['x-rate-limit-remaining'];
+        var ratereset = +res.headers['x-ratelimit-reset']
+          , ratelimit = +res.headers['x-ratelimit-limit']
+          , remaining = +res.headers['x-ratelimit-remaining'];
 
         mana.ratereset = isNaN(ratereset) ? mana.ratereset : ratereset;
         mana.ratelimit = isNaN(ratelimit) ? mana.ratelimit : ratelimit;
