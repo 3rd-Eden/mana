@@ -124,6 +124,7 @@ function Mana() {
   // and a way to avoid these limits is to use a rolling token system where it
   // iterates over the api tokens and gets the next working one.
   //
+  if ('string' === typeof this.tokens) this.tokens = this.tokens.split(',');
   if (Array.isArray(this.tokens) && this.tokens.length) {
     this.tokenizer().roll();
   }
