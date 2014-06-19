@@ -621,7 +621,7 @@ Mana.prototype.send = function send(args) {
   //
   if (options.params) {
     if ('GET' === options.method) {
-      args.str += this.querystringy(options, options.params);
+      args.str += this.querystring(options, options.params);
     } else {
       options.json = this.json(options, options.params);
     }
