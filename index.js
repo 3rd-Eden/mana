@@ -698,11 +698,14 @@ Mana.prototype.send = function send(args) {
         if (err) {
           mana.debug('Received an error (%s) for URL %s', err.message, options.uri);
 
-          err.url = options.uri;  // The URL we accessed.
-          err.statusCode = 500;   // Force status code.
-          err.errors = errors;    // Previous errors.
-          err.body = body;        // The response body.
-          err.data = {};          // The parsed data.
+          err.url = options.uri;          // The URL we accessed.
+          err.statusCode = 500;           // Force status code.
+          err.errors = errors;            // Previous errors.
+          err.body = body;                // The response body.
+          err.data = {};                  // The parsed data.
+          err.remaining = mana.remaining; // Rate remaining.
+          err.ratereset = mana.ratereset; // Rate reset.
+          err.ratelimit = mana.ratelimit; // Rate limit.
 
           return assign.destroy(err);
         }
@@ -765,11 +768,14 @@ Mana.prototype.send = function send(args) {
           mana.debug('Received an invalid statusCode (%s) for URL %s', res.statusCode, options.uri);
           err = new Error('Received a non 200 status code: '+ res.statusCode);
 
-          err.url = options.uri;  // The URL we accessed.
-          err.statusCode = 500;   // Force status code.
-          err.errors = errors;    // Previous errors.
-          err.body = body;        // The response body.
-          err.data = {};          // Parsed response.
+          err.url = options.uri;          // The URL we accessed.
+          err.statusCode = 500;           // Force status code.
+          err.errors = errors;            // Previous errors.
+          err.body = body;                // The response body.
+          err.data = {};                  // Parsed response.
+          err.remaining = mana.remaining; // Rate remaining.
+          err.ratereset = mana.ratereset; // Rate reset.
+          err.ratelimit = mana.ratelimit; // Rate limit.
 
           return next(err);
         }
@@ -796,11 +802,14 @@ Mana.prototype.send = function send(args) {
             //
             mana.debug('Failed to parse JSON: %s for URL %s', e.message, options.uri);
 
-            e.url = options.uri;  // The URL we accessed.
-            e.statusCode = 500;   // Force status code.
-            e.errors = errors;    // Previous errors.
-            e.body = body;        // The response body.
-            e.data = {};          // Parsed response.
+            e.url = options.uri;          // The URL we accessed.
+            e.statusCode = 500;           // Force status code.
+            e.errors = errors;            // Previous errors.
+            e.body = body;                // The response body.
+            e.data = {};                  // Parsed response.
+            e.remaining = mana.remaining; // Rate remaining.
+            e.ratereset = mana.ratereset; // Rate reset.
+            e.ratelimit = mana.ratelimit; // Rate limit.
 
             return next(e);
           }
@@ -815,11 +824,14 @@ Mana.prototype.send = function send(args) {
         if (res.statusCode === 404 && 'HEAD' !== options.method) {
           err = new Error('Invalid status code: 404');
 
-          err.url = options.uri;  // URL of the request.
-          err.statusCode = 404;   // Status code.
-          err.errors = errors;    // Previous errors.
-          err.body = body;        // The response body.
-          err.data = data;        // Parsed response.
+          err.url = options.uri;          // URL of the request.
+          err.statusCode = 404;           // Status code.
+          err.errors = errors;            // Previous errors.
+          err.body = body;                // The response body.
+          err.data = data;                // Parsed response.
+          err.remaining = mana.remaining; // Rate remaining.
+          err.ratereset = mana.ratereset; // Rate reset.
+          err.ratelimit = mana.ratelimit; // Rate limit.
 
           return assign.destroy(err);
         }
@@ -874,11 +886,14 @@ Mana.prototype.send = function send(args) {
         mana.debug('We failed to fetch %s, all servers are down.', options.uri);
         failure = new Error('Failed to process request: '+ err.message);
 
-        failure.url = options.url;
-        failure.statusCode = 500;
-        failure.errors = errors;
-        failure.body = '';
-        failure.data = {};
+        failure.url = options.url;          // URL we connected with.
+        failure.statusCode = 500;           // Returned status code.
+        failure.errors = errors;            // Reference to errors.
+        failure.body = '';                  // Returned body>
+        failure.data = {};                  // Parsed response.
+        failure.remaining = mana.remaining; // Rate remaining.
+        failure.ratereset = mana.ratereset; // Rate reset.
+        failure.ratelimit = mana.ratelimit; // Rate limit.
 
         assign.destroy(failure);
       }, options.backoff);
