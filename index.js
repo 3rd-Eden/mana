@@ -594,8 +594,8 @@ Mana.prototype.send = function send(args) {
   }
 
   var mana = this
+    , assign = new Assign(this)
     , options = args.options || {}
-    , assign = new Assign(this, this.all(args.str))
     , mirrors = [ options.api || this.api ].concat(this.mirrors || []);
 
   options.method = ('method' in options ? options.method : 'GET').toUpperCase();
@@ -628,6 +628,12 @@ Mana.prototype.send = function send(args) {
 
     delete options.params;
   }
+
+  //
+  // Now that all modifications are complete we can finally assign the callback
+  // to `assign` instance so it can generate the correct request id.
+  //
+  assign.finally(this.all(args.str));
 
   //
   // Optimization: Check if we're already running a request for this given API
