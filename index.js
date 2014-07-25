@@ -602,6 +602,7 @@ Mana.prototype.send = function send(args) {
   options.timeout = ms('timeout' in options ? options.timeout : this.timeout);
   options.strictSSL = 'strictSSL' in options ? options.strictSSL : false;
   options.headers = 'headers' in options ? options.headers : {};
+  options.maxSockets = 'maxSockets' in options ? options.maxSockets : false;
 
   //
   // Exponential back off configuration.
