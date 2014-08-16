@@ -95,6 +95,7 @@ function Mana() {
   this.fuse();
 
   this.fnqueue = Object.create(null);   // Callback queue.
+  this.authHeader = 'Authorization';    // Default auth header
   this.remaining = 0;                   // How many API calls are remaining.
   this.ratelimit = 0;                   // The amount of API calls allowed.
   this.ratereset = 0;                   // In how many seconds is the rate limit reset.
@@ -657,7 +658,7 @@ Mana.prototype.send = function send(args) {
       key: 'User-Agent',
       value: this.name +'/'+ this.version +' node/'+ process.version
     }, {
-      key: 'Authorization',
+      key: this.authHeader,
       value: this.authorization
     }, {
       key: 'Accept',
