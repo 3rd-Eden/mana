@@ -600,9 +600,9 @@ Mana.prototype.send = function send(args) {
 
   options.method = ('method' in options ? options.method : 'GET').toUpperCase();
   options.timeout = ms('timeout' in options ? options.timeout : this.timeout);
-  options.strictSSL = 'strictSSL' in options ? options.strictSSL : false;
+  options.strictSSL = 'strictSSL' in options ? options.strictSSL : this.strictSSL || false;
   options.headers = 'headers' in options ? options.headers : {};
-  options.maxSockets = 'maxSockets' in options ? options.maxSockets : false;
+  options.maxSockets = 'maxSockets' in options ? options.maxSockets : this.maxSockets || 444;
 
   //
   // Exponential back off configuration.
