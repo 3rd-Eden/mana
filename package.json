@@ -29,14 +29,14 @@
   "dependencies": {
     "assign": "0.1.x",
     "back": "0.1.x",
-    "debug": "0.7.x",
-    "fusing": "0.2.x",
+    "diagnostics": "0.0.x",
+    "fusing": "0.3.x",
     "ms": "0.6.x",
-    "request": "2.34.x",
+    "request": "2.40.x",
     "eventemitter3": "0.1.x"
   },
   "devDependencies": {
-    "mocha": "1.12.x",
+    "mocha": "1.21.x",
     "pre-commit": "0.0.x",
     "chai": "1.9.x"
   }

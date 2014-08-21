@@ -1,7 +1,7 @@
 'use strict';
 
 var EventEmitter = require('eventemitter3')
-  , debugFactory = require('debug')
+  , diagnostics = require('diagnostics')
   , request = require('request')
   , qs = require('querystring')
   , Assign = require('assign')
@@ -105,7 +105,7 @@ function Mana() {
   // Create a debug method that correctly prefixes log messages with `mana` and
   // the name of the implementer.
   //
-  this.debug = debugFactory('mana:'+ this.name);
+  this.debug = diagnostics('mana:'+ this.name);
 
   if ('function' === this.type(this.initialise)) {
     this.initialise.apply(this, arguments);
@@ -919,7 +919,7 @@ Mana.prototype.send = function send(args) {
  * @returns {Mana}
  */
 Mana.drink = function drink(module) {
-  var debug = debugFactory('mana')
+  var debug = diagnostics('mana')
     , path = require('path')
     , fs = require('fs')
     , Potion = this;
