@@ -46,7 +46,7 @@ function Token(OAuth, options) {
  * @api public
  */
 Token.prototype.available = function available() {
-  var reset = this.ratereset && Date.now() >= (this.ratereset * 1000);
+  var reset = this.ratereset >= 0 && (Date.now() >= (this.ratereset * 1000));
 
   //
   // We're in our cool down phase. We temporarily disable this token to ensure
@@ -67,7 +67,7 @@ Token.prototype.available = function available() {
 
   return this.ratelimit === Infinity    // First use, unknown state.
   || this.remaining > 0                 // We still tokens remaining.
-  || !!reset;                           // Rate limit has reset.
+  || reset;                           // Rate limit has reset.
 };
 
 /**

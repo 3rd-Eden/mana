@@ -200,7 +200,7 @@ describe('mana', function () {
   });
 });
 
-describe('Tokens', function () {
+describe.only('Tokens', function () {
   'use strict';
 
   var Mana = require('../')
@@ -226,11 +226,11 @@ describe('Tokens', function () {
   describe("#available", function () {
     beforeEach(function () {
       token.ratelimit = 0;
-      token.ratereset = 0;
+      token.ratereset = (Date.now() / 1000) + 100;
       token.remaining = 0;
     });
 
-    it('is unavailable if values are null', function () {
+    it('is unavailable if values are zero', function () {
       expect(token.available()).to.equal(false);
     });
 
@@ -248,7 +248,7 @@ describe('Tokens', function () {
     it('is available if our rate has been reset', function () {
       expect(token.available()).to.equal(false);
 
-      token.ratereset = Date.now() / 1000;
+      token.ratereset = (Date.now() / 1000) - 10;
       expect(token.available()).to.equal(true);
 
       token.ratereset = (Date.now() / 1000) + 10;
