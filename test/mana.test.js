@@ -151,8 +151,8 @@ describe('mana', function () {
       mana.authorization = mana.tokens[0].authorization;
 
       mana.ratelimit = 9000;
-      mana.remaining = 10;
-      mana.ratereset = Date.now()/1000;
+      mana.remaining = 0;
+      mana.ratereset = Date.now() / 1000;
     });
 
     it('resets the current token to the current rate limit', function () {
@@ -160,28 +160,25 @@ describe('mana', function () {
       var token = mana.tokens[0];
 
       expect(token.ratelimit).to.equal(mana.ratelimit);
-      expect(token.remaining).to.equal(mana.remaining);
+      expect(token.remaining).to.equal(9000);
       expect(token.ratereset).to.equal(mana.ratereset);
     });
 
     it('returns boolean values indicating a working token', function () {
       expect(mana.roll()).to.equal(true);
 
-      mana.tokens[0].remaining = 0;
-      mana.tokens[0].ratereset = (Date.now() / 1000) + 100;
-      expect(mana.tokens.length).to.equal(1);
-      expect(mana.tokens[0].available()).to.equal(false);
-
+      mana.remaining = 0;
+      mana.ratereset = (Date.now() / 1000) + 100;
       expect(mana.roll()).to.equal(false);
     });
 
     it('returns the most optimal token', function () {
-      mana.tokens = ['foo', 'bar', 'baz', 'oof', 'zab'];
+      mana.tokens = ['foob', 'bar', 'baz', 'oof', 'zab'];
       mana.tokenizer();
       mana.tokens.forEach(function (token) {
         token.ratelimit = 9000;
         token.remaining = 10;
-        token.ratereset = Date.now()/1000;
+        token.ratereset = Date.now();
       });
 
       var token = mana.tokens[2];

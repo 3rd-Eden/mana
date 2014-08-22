@@ -289,7 +289,7 @@ Mana.prototype.roll = function roll() {
 
   tokens = this.tokens.filter(function filter(token) {
     return token.available();
-  }).sort(function sort(a, b) {
+  }).sort(function sort(b, a) {
     if (a.remaining !== b.remaining) {
       if (a.remaining < b.remaining) return -1;
       if (a.remaining > b.remaining) return 1;
