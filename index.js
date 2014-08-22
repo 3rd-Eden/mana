@@ -67,7 +67,7 @@ Token.prototype.available = function available() {
 
   return this.ratelimit === Infinity    // First use, unknown state.
   || this.remaining > 0                 // We still tokens remaining.
-  || reset;                             // Rate limit has reset.
+  || !!reset;                           // Rate limit has reset.
 };
 
 /**
