@@ -200,7 +200,7 @@ describe('mana', function () {
   });
 });
 
-describe.only('Tokens', function () {
+describe('Tokens', function () {
   'use strict';
 
   var Mana = require('../')
