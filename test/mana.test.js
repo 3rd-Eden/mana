@@ -129,6 +129,13 @@ describe('mana', function () {
       });
     });
 
+    it('prevents duplicate tokens', function () {
+      mana.tokens =  ['foo', 'foo', 'bar'];
+      mana.tokenizer().tokenizer().tokens.forEach(function (token) {
+        expect(/foo|bar/.test(token.authorization)).to.equal(true);
+      });
+    });
+
     it('allows multiple invocations', function () {
       mana.tokens = ['foo', 'bar'];
       mana.tokenizer().tokenizer().tokens.forEach(function (token) {

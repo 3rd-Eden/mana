@@ -313,7 +313,9 @@ Mana.prototype.roll = function roll() {
  * @api private
  */
 Mana.prototype.tokenizer = function tokenizer() {
-  this.tokens = this.tokens.map(function tokenizing(OAuth) {
+  this.tokens = this.tokens.filter(function filter(token, index, tokens) {
+    return tokens.indexOf(token) === index;
+  }).map(function tokenizing(OAuth) {
     if (OAuth instanceof Token) return OAuth;
     return new Token(OAuth);
   });
