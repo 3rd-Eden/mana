@@ -129,6 +129,13 @@ describe('mana', function () {
       });
     });
 
+    it('removes undefined values', function () {
+      mana.tokens = ['foo', undefined];
+      mana.tokenizer();
+
+      expect(mana.tokens.length).to.equal(1);
+    });
+
     it('prevents duplicate tokens', function () {
       mana.tokens =  ['foo', 'foo', 'bar'];
       mana.tokenizer().tokenizer().tokens.forEach(function (token) {
