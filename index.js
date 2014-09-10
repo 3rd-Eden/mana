@@ -754,8 +754,11 @@ Mana.prototype.send = function send(args) {
              || 401 === res.statusCode
            )
         ) {
-          if (401 === res.statusCode) mana.debug('Received a 401 on our access token, trying another token');
-          else mana.debug('Weve reached our API limit, trying another token');
+          if (401 === res.statusCode) {
+            mana.debug('Received a 401 on our access `%s` token, trying another token', mana.authorization);
+          } else {
+            mana.debug('Weve reached our API limit with `%s`, trying another token', mana.authorization);
+          }
 
           if (mana.roll()) {
             options.headers.Authorization = mana.authorization;
