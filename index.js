@@ -729,9 +729,12 @@ Mana.prototype.send = function send(args) {
           , ratelimit = +res.headers['x-ratelimit-limit']
           , remaining = +res.headers['x-ratelimit-remaining'];
 
-        mana.ratereset = isNaN(ratereset) ? mana.ratereset : ratereset;
-        mana.ratelimit = isNaN(ratelimit) ? mana.ratelimit : ratelimit;
-        mana.remaining = isNaN(remaining) ? mana.remaining : remaining;
+        if (!isNaN(ratereset)) mana.ratereset = ratereset;
+        if (!isNaN(ratelimit)) mana.ratelimit =  ratelimit;
+        if (!isNaN(remaining)) {
+          mana.remaining = remaining;
+          mana.debug('Only %d API request remaining', remaining);
+        }
 
         //
         // We had a successful cache hit, use our cached result as response
@@ -772,7 +775,10 @@ Mana.prototype.send = function send(args) {
           }
         }
 
-        if (200 !== res.statusCode && 404 !== res.statusCode) {
+        if (
+          !(res.statusCode >= 200 && res.statusCode < 300)
+          && 404 !== res.statusCode
+        ) {
 
           //
           // Assume that the server is returning an unknown response and that we
@@ -799,8 +805,10 @@ Mana.prototype.send = function send(args) {
         //
         var data = body;
 
+
         if (
-          'string' === typeof data
+             data
+          && 'string' === typeof data
           && !~options.headers.Accept.indexOf('text')
           && !~options.headers.Accept.indexOf('html')
           && 'HEAD' !== options.method
