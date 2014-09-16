@@ -597,8 +597,8 @@ Mana.prototype.send = function send(args) {
   }
 
   var mana = this
-    , assign = new Assign(this)
     , options = args.options || {}
+    , assign = options.assign || new Assign(this)
     , mirrors = [ options.api || this.api ].concat(this.mirrors || []);
 
   options.method = ('method' in options ? options.method : 'GET').toUpperCase();
@@ -742,7 +742,8 @@ Mana.prototype.send = function send(args) {
         //
         if (304 === res.statusCode && cache) {
           mana.debug('CACHE HIT, using cached data for URL', options.uri);
-          return assign.write(cache.data, { end: true });
+          assign.write(cache.data, { end: !options.assign });
+          return options.next && options.next(res, assign);
         }
 
         //
@@ -873,8 +874,9 @@ Mana.prototype.send = function send(args) {
           });
         }
 
-        if ('HEAD' !== options.method) assign.write(data, { end: true });
-        else assign.write({ res: res, data: data }, { end: true });
+        if ('HEAD' !== options.method) assign.write(data, { end: !options.next });
+        else assign.write({ res: res, data: data }, { end: !options.next });
+        if (options.next) options.next(res, assign);
       }
 
       //
