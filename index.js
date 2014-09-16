@@ -979,6 +979,21 @@ Mana.drink = function drink(module) {
   return module.exports = Potion;
 };
 
+/**
+ * Handy shorthand for creating a new instance of an API without having to using
+ * the `new` constructor. This allows immediate creation after requiring:
+ *
+ * ```js
+ * require('mana').new(options);
+ * ```
+ *
+ * @returns {Mana} The generated mana instance.
+ * @api public
+ */
+Mana.new = function create(options) {
+  return new this(options);
+};
+
 //
 // Expose our token interface on the module.
 //
