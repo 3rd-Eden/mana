@@ -400,6 +400,8 @@ Mana.prototype.push = function push(urid, fn, assign) {
  * @api private
  */
 Mana.prototype.args = function parser(args) {
+  if ('object' === this.type(args)) return args;
+
   var alias = {
     'function': 'fn',       // My preferred callback name.
     'object':   'options',  // Objects are usually options.
@@ -416,7 +418,7 @@ Mana.prototype.args = function parser(args) {
     }
 
     return data;
-  }, {});
+  }, Object.create(null));
 };
 
 /**
@@ -742,8 +744,8 @@ Mana.prototype.send = function send(args) {
         //
         if (304 === res.statusCode && cache) {
           mana.debug('CACHE HIT, using cached data for URL', options.uri);
-          assign.write(cache.data, { end: !options.assign });
-          return options.next && options.next(res, assign);
+          assign.write(cache.data, { end: !options.next });
+          return options.next && options.next(res, assign, args);
         }
 
         //
@@ -876,7 +878,7 @@ Mana.prototype.send = function send(args) {
 
         if ('HEAD' !== options.method) assign.write(data, { end: !options.next });
         else assign.write({ res: res, data: data }, { end: !options.next });
-        if (options.next) options.next(res, assign);
+        if (options.next) options.next(res, assign, args);
       }
 
       //
