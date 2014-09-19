@@ -189,7 +189,9 @@ Mana.prototype._view = '/-/_view/';
  * @api public
  */
 Mana.prototype.querystring = function querystringify(options, allowed) {
-  var query = qs.stringify(this.json(options, allowed));
+  var json = this.json(options, allowed)
+    , query = qs.stringify(json);
+
   return query ? '?'+ query : '';
 };
 
@@ -631,8 +633,6 @@ Mana.prototype.send = function send(args) {
     } else {
       options.json = this.json(options, options.params);
     }
-
-    delete options.params;
   }
 
   //
