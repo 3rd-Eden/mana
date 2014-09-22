@@ -427,7 +427,7 @@ Mana.prototype.args = function parser(args) {
  * Get accurate type information for the given JavaScript class.
  *
  * @param {Mixed} of The thing who's type class we want to figure out.
- * @returns {String} lowercase variant of the name.
+ * @returns {String} Lowercase variant of the name.
  * @api private
  */
 Mana.prototype.type = function type(of) {
