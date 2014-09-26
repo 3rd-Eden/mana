@@ -189,7 +189,9 @@ Mana.prototype._view = '/-/_view/';
  * @api public
  */
 Mana.prototype.querystring = function querystringify(options, allowed) {
-  var query = qs.stringify(this.json(options, allowed));
+  var json = this.json(options, allowed)
+    , query = qs.stringify(json);
+
   return query ? '?'+ query : '';
 };
 
@@ -400,6 +402,8 @@ Mana.prototype.push = function push(urid, fn, assign) {
  * @api private
  */
 Mana.prototype.args = function parser(args) {
+  if ('object' === this.type(args)) return args;
+
   var alias = {
     'function': 'fn',       // My preferred callback name.
     'object':   'options',  // Objects are usually options.
@@ -416,14 +420,14 @@ Mana.prototype.args = function parser(args) {
     }
 
     return data;
-  }, {});
+  }, Object.create(null));
 };
 
 /**
  * Get accurate type information for the given JavaScript class.
  *
  * @param {Mixed} of The thing who's type class we want to figure out.
- * @returns {String} lowercase variant of the name.
+ * @returns {String} Lowercase variant of the name.
  * @api private
  */
 Mana.prototype.type = function type(of) {
@@ -587,6 +591,7 @@ Mana.prototype.fireforget = function fireforget(args) {
  */
 Mana.prototype.send = function send(args) {
   args = this.args(arguments);
+  args.options = args.options || {};
 
   //
   // Automatically assume that people want to transform an array in to
@@ -597,24 +602,24 @@ Mana.prototype.send = function send(args) {
   }
 
   var mana = this
-    , assign = new Assign(this)
-    , options = args.options || {}
-    , mirrors = [ options.api || this.api ].concat(this.mirrors || []);
+    , options = {}
+    , assign = args.options.assign || new Assign(this)
+    , mirrors = [ args.options.api || this.api ].concat(this.mirrors || []);
 
-  options.method = ('method' in options ? options.method : 'GET').toUpperCase();
-  options.timeout = ms('timeout' in options ? options.timeout : this.timeout);
-  options.strictSSL = 'strictSSL' in options ? options.strictSSL : this.strictSSL || false;
-  options.headers = 'headers' in options ? options.headers : {};
-  options.maxSockets = 'maxSockets' in options ? options.maxSockets : this.maxSockets || 444;
+  options.method = ('method' in args.options ? args.options.method : 'GET').toUpperCase();
+  options.timeout = ms('timeout' in args.options ? args.options.timeout : this.timeout);
+  options.strictSSL = 'strictSSL' in args.options ? args.options.strictSSL : this.strictSSL || false;
+  options.headers = 'headers' in args.options ? args.options.headers : {};
+  options.maxSockets = 'maxSockets' in args.options ? args.options.maxSockets : this.maxSockets || 444;
 
   //
   // Exponential back off configuration.
   //
-  options.backoff = {
-    minDelay: ms('mindelay' in options ? options.mindelay : this.mindelay),
-    maxDelay: ms('maxdelay' in options ? options.maxdelay : this.maxdelay),
-    retries: 'retries' in options ? options.retires : this.retries,
-    factor: 'factor' in options ? options.factor : this.factor
+  args.options.backoff = {
+    minDelay: ms('mindelay' in options ? args.options.mindelay : this.mindelay),
+    maxDelay: ms('maxdelay' in options ? args.options.maxdelay : this.maxdelay),
+    retries: 'retries' in options ? args.options.retires : this.retries,
+    factor: 'factor' in options ? args.options.factor : this.factor
   };
 
   //
@@ -623,14 +628,17 @@ Mana.prototype.send = function send(args) {
   // query string all other cases we assume that it should be send as request
   // body.
   //
-  if (options.params) {
+  if (args.options.params) {
     if ('GET' === options.method) {
-      args.str += this.querystring(options, options.params);
+      args.str += this.querystring(this.merge(
+          url.parse(args.str, true).query,
+          args.options
+        ),
+        args.options.params
+    );
     } else {
-      options.json = this.json(options, options.params);
+      options.json = this.json(args.options, args.options.params);
     }
-
-    delete options.params;
   }
 
   //
@@ -742,7 +750,8 @@ Mana.prototype.send = function send(args) {
         //
         if (304 === res.statusCode && cache) {
           mana.debug('CACHE HIT, using cached data for URL', options.uri);
-          return assign.write(cache.data, { end: true });
+          assign.write(cache.data, { end: !args.options.next });
+          return args.options.next && args.options.next(res, assign, args);
         }
 
         //
@@ -804,7 +813,6 @@ Mana.prototype.send = function send(args) {
         // allows us to return more readable error messages.
         //
         var data = body;
-
 
         if (
              data
@@ -873,8 +881,9 @@ Mana.prototype.send = function send(args) {
           });
         }
 
-        if ('HEAD' !== options.method) assign.write(data, { end: true });
-        else assign.write({ res: res, data: data }, { end: true });
+        if ('HEAD' !== options.method) assign.write(data, { end: !args.options.next });
+        else assign.write({ res: res, data: data }, { end: !args.options.next });
+        if (args.options.next) args.options.next(res, assign, args);
       }
 
       //
@@ -885,12 +894,12 @@ Mana.prototype.send = function send(args) {
       //
       if (!err) {
         options.uri = url.resolve(root, args.str);
-        mana.debug('requesting url %s', options.uri);
+        mana.debug('requesting url %j', options);
         return request(options, parse);
       }
 
       back(function toTheFuture(failure, backoff) {
-        options.backoff = backoff;
+        args.options.backoff = backoff;
 
         mana.debug(
           'Starting request again to %s after back off attempt %s/%s',
@@ -917,7 +926,7 @@ Mana.prototype.send = function send(args) {
         failure.ratelimit = mana.ratelimit; // Rate limit.
 
         assign.destroy(failure);
-      }, options.backoff);
+      }, args.options.backoff);
     });
   });
 
