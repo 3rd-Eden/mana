@@ -23,6 +23,53 @@ The module is released through npm.
 npm install --save mana
 ```
 
+## Assumptions
+
+Before you get started with building your first mana based API client there are
+some assumptions we make
+
+### Tokens
+
+We assume that the supplied token(s) should be used as `Authorization` header
+and that the supplied token should be prefixed with `token `.
+
+### Rate limiting
+
+Again, we have to make some sane assumptions here as well. There tons of ways
+that an API server can say that you've reached your limit. We assume that it
+sends the following headers with each HTTP response: 
+
+- `x-ratelimit-reset` Time when the limit is reset in UTC EPOCH seconds.
+- `x-ratelimit-limit` Maximum of requests the user can make.
+- `x-ratelimit-remaining` The amount of requests the user has left.
+
+We will only take these values in to account when multiple tokens are used and a
+none `200` status code has been returned from the server.
+
+## Usage
+
+In all of the examples we assume that you've loaded the library using:
+
+```js
+'use strict';
+
+var mana = require('mana');
+```
+
+To create you own custom mana instance you need to extend the returned mana
+instance. Extending is done by calling the `mana.extend` method with an object
+which will be merged on the prototype:
+
+```js
+var MyAPI = mana.extend({
+  url: 'https://api.im-implementing.com/'
+});
+```
+
+In the code snippet you see us adding the `url` property and storing the result
+of the extending as the `MyAPI` class. The `url` property is one of the
+properies that are required and need to be specified on every single instance. 
+
 ## Drinking the potion
 
 The module assumes a simple pattern. The API end points are listed in a folder
