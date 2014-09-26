@@ -39,9 +39,8 @@ function Mana() {
   //
   this.debug = diagnostics('mana:'+ this.name);
 
-  if ('function' === this.type(this.initialise)) {
-    this.initialise.apply(this, arguments);
-  }
+  if ('function' === this.type(this.initialise)) this.initialise.apply(this, arguments);
+  if ('function' === this.type(this.initialize)) this.initialize.apply(this, arguments);
 
   //
   // This is a required option, we cannot continue properly if we don't have an
@@ -84,6 +83,22 @@ Mana.prototype.factor = 2;              // Back off factor.
  * @public
  */
 Mana.prototype.timeout = '20 seconds';
+
+/**
+ * Maximum amount of sockets we can use for pooling.
+ *
+ * @type {Number}
+ * @public
+ */
+Mana.prototype.maxSockets = 444;
+
+/**
+ * Should the requests be make with strictSSL enabled.
+ *
+ * @type {Boolean}
+ * @public
+ */
+Mana.prototype.strictSSL = false;
 
 /**
  * Expose the current version number of our Mana package so it's re-used in our
@@ -177,7 +192,7 @@ Mana.prototype.json = function jsonify(options, allowed) {
  * @param {Error} err Optional error argument.
  * @param {Mixed} data The data that should be written.
  * @returns {Assign}
- * @api public
+ * @api private
  */
 Mana.prototype.bail = function bail(fn, err, data) {
   var assign = new Assign(this, fn);
@@ -187,7 +202,7 @@ Mana.prototype.bail = function bail(fn, err, data) {
     ? global.setImmediate
     : global.setTimeout
   )(function immediate() {
-    if (err) assign.destroy(err);
+    if (err) return assign.destroy(err);
     assign.write(data, { end: true });
   });
 
@@ -298,7 +313,7 @@ Mana.prototype.all = function all(urid) {
  *
  * @param {String} urid The Unique Request Identifier.
  * @returns {Array|Undefined} Potential list of callbacks to call.
- * @api privat
+ * @api private
  */
 Mana.prototype.fetching = function fetching(urid) {
   return this.fnqueue[urid];
@@ -331,7 +346,7 @@ Mana.prototype.push = function push(urid, fn, assign) {
  *
  * @param {Arguments} args Arguments.
  * @returns {Object} type => based object.
- * @api private
+ * @api public
  */
 Mana.prototype.args = function parser(args) {
   if ('object' === this.type(args)) return args;
@@ -360,7 +375,7 @@ Mana.prototype.args = function parser(args) {
  *
  * @param {Mixed} of The thing who's type class we want to figure out.
  * @returns {String} Lowercase variant of the name.
- * @api private
+ * @api public
  */
 Mana.prototype.type = function type(of) {
   return toString.call(of).slice(8, -1).toLowerCase();
@@ -540,9 +555,9 @@ Mana.prototype.send = function send(args) {
 
   options.method = ('method' in args.options ? args.options.method : 'GET').toUpperCase();
   options.timeout = ms('timeout' in args.options ? args.options.timeout : this.timeout);
-  options.strictSSL = 'strictSSL' in args.options ? args.options.strictSSL : this.strictSSL || false;
+  options.strictSSL = 'strictSSL' in args.options ? args.options.strictSSL : this.strictSSL;
   options.headers = 'headers' in args.options ? args.options.headers : {};
-  options.maxSockets = 'maxSockets' in args.options ? args.options.maxSockets : this.maxSockets || 444;
+  options.maxSockets = 'maxSockets' in args.options ? args.options.maxSockets : this.maxSockets;
 
   //
   // Exponential back off configuration.
