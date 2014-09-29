@@ -46,6 +46,20 @@ sends the following headers with each HTTP response:
 We will only take these values in to account when multiple tokens are used and a
 none `200` status code has been returned from the server.
 
+### Caching
+
+In order to relieve stress on the API server that you're implementing there is
+an option to supply a cache instance which will be used to store responses that
+have `etag` headers. When we're about to request an API we check if the URL has
+been stored in the cache and use the stored `etag` in the `if-none-match` header
+so we can trigger a `304` response on the API end point and use our cached data
+instead. This reduces the amount of data you need receive over the connection
+and some API providers like GitHub don't count `304` requests as part of their
+rate limiting.
+
+See [mana.fireforget()](#manafireforget) for more details on the cache API
+requirements.
+
 ## Usage
 
 In all of the examples we assume that you've loaded the library using:
@@ -274,6 +288,31 @@ If cache has been specified on the `mana` object and a cache entry is also
 available we will also add a `if-none-match` header with the value of the
 returned `etag` during the time of the caching.
 
+```js
+mana.extend({
+  afunction: function fn(id, callback) {
+    var x = this.send(['path', id, 'action'], this.merge(body, {
+      headers: {
+        'x-foo-bar': 'foboar'
+      }
+    }), callback);
+
+    //
+    // As the `send` method returns an Assign instance we can do
+    // map/reduce/filter operation on the returned dataset. This ensures that
+    // the supplied callback gets a data structure that we want and not that the
+    // API server returns.
+    //
+    x.map(function (row) {
+      return {
+        id: row.id,
+        whatever: row.foo.bar
+      }
+    });
+  }
+})
+```
+
 ### mana.view()
 
 The view method allows you do to some basic requests against a CouchDB interface
@@ -358,6 +397,26 @@ Returns a function will will call queued functions for the given `urid`.
 **This is a private method, do not touch unless you feel adventurous.**
 
 Check if we are already fetching the given request.
+
+## Inherited
+
+There are also a couple of methods that mana has because it inherits from
+certain modules. The mana instance that you create is an `EventEmitter` not the
+regular emitter from node but a high-performance variant of it. It's an
+[EventEmitter3](https://github.com/3rd-Eden/eventemitter3). So all `emit`, `on`
+and all other EventEmitter related methods are available for you to use and
+abuse.
+
+As the extending is done using the [fusing](https://github.com/bigpipe/fusing)
+library it also inherits the following methods:
+
+- [`Mana/this.readable('name', 'value')`](https://github.com/bigpipe/fusing#examplereadable)
+- [`Mana/this.writable('name', 'value')`](https://github.com/bigpipe/fusing#examplewritable)
+- [`Mana/this.get('name', 'value')`](https://github.com/bigpipe/fusing#exampleget)
+- [`Mana/this.set('name', 'value')`](https://github.com/bigpipe/fusing#exampleset)
+- [`this.merge(obj, obj2)`](https://github.com/bigpipe/predefine#predefinemerge)
+- [`this.mixin(obj, obj2)`](https://github.com/bigpipe/predefine#predefinemixin)
+- [`this.emits(event)`](https://github.com/bigpipe/fusing/blob/master/index.js#L154)
 
 ## Debugging
 
