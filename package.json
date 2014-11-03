@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/3rd-Eden/mana",
   "dependencies": {
-    "assign": "0.1.x",
+    "assign": ">=0.1.7",
     "back": "0.1.x",
     "diagnostics": "0.0.x",
     "fusing": "0.3.x",

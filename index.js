@@ -699,6 +699,7 @@ Mana.prototype.send = function send(args) {
         //
         if (304 === res.statusCode && cache) {
           mana.debug('CACHE HIT, using cached data for URL', options.uri);
+          assign.add(res.headers);
           assign.write(cache.data, { end: !args.options.next });
           return args.options.next && args.options.next(res, assign, args);
         }
@@ -829,6 +830,11 @@ Mana.prototype.send = function send(args) {
             data: data
           });
         }
+
+        //
+        // Add headers for debugging purposes.
+        //
+        assign.add(res.headers);
 
         if ('HEAD' !== options.method) assign.write(data, { end: !args.options.next });
         else assign.write({ res: res, data: data }, { end: !args.options.next });
