@@ -661,6 +661,7 @@ Mana.prototype.send = function send(args) {
        */
       function parse(err, res, body) {
         mana.debug('Response headers %j', res.headers || {});
+        assign.emit('headers', res.headers);
 
         if (err) {
           mana.debug('Received an error (%s) for URL %s', err.message, options.uri);
