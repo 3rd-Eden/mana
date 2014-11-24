@@ -660,7 +660,7 @@ Mana.prototype.send = function send(args) {
        * @api private
        */
       function parse(err, res, body) {
-        mana.debug('Response headers %j', res.headers || {});
+        mana.debug('Response headers %j', res && res.headers || {});
         assign.emit('headers', res && res.headers || {});
 
         if (err) {
