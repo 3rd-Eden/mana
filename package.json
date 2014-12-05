@@ -1,6 +1,6 @@
 {
   "name": "mana",
-  "version": "0.1.36",
+  "version": "0.1.37",
   "description": "mana potion",
   "main": "index.js",
   "scripts": {
