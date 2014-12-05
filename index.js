@@ -560,6 +560,13 @@ Mana.prototype.send = function send(args) {
   options.maxSockets = 'maxSockets' in args.options ? args.options.maxSockets : this.maxSockets;
 
   //
+  // Remark: We want to ensure this can be not set at all
+  //
+  if ('proxy' in args.options || this.proxy) {
+    options.proxy = 'proxy' in args.options ? args.options.proxy : this.proxy;
+  }
+
+  //
   // Exponential back off configuration.
   //
   args.options.backoff = {
