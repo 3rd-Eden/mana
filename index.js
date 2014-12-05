@@ -562,7 +562,7 @@ Mana.prototype.send = function send(args) {
   //
   // Remark: We want to ensure this can be not set at all
   //
-  if ('proxy' in args.options || this.proxy) {
+  if ('proxy' in args.options || typeof this.proxy !== 'undefined') {
     options.proxy = 'proxy' in args.options ? args.options.proxy : this.proxy;
   }
 
