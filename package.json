@@ -32,7 +32,7 @@
     "diagnostics": "0.0.x",
     "fusing": "0.3.x",
     "ms": "0.6.x",
-    "request": "2.40.x",
+    "request": "2.x.x",
     "eventemitter3": "0.1.x"
   },
   "devDependencies": {
