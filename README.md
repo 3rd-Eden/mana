@@ -110,6 +110,7 @@ needed:
   which is the same as `npm` is using.
 - `strictSSL` Should we request everything with strict SSL. Defaults to `false`.
 - `maxSockets` Maximum amount of sockets. Defaults to `444`.
+- `prefix` The prefix for the authorization header value, defaults to `token `.
 
 Every property that represents time can be set with either a number in
 milliseconds as value or a human readable string like `10 seconds`. This is
