@@ -1,12 +1,9 @@
 describe('mana', function () {
   'use strict';
 
-  var Mana = require('../')
-    , chai = require('chai')
-    , expect = chai.expect
+  var assume = require('assume')
+    , Mana = require('../')
     , Token = Mana.Token;
-
-  chai.config.includeStack = true;
 
   var mana = new Mana();
 
@@ -19,8 +16,8 @@ describe('mana', function () {
     it('correctly receives all arguments', function (done) {
       var Init = Mana.extend({
         initialise: function (foo, bar) {
-          expect(foo).to.equal('bar');
-          expect(bar).to.equal('foo');
+          assume(foo).to.equal('bar');
+          assume(bar).to.equal('foo');
 
           done();
         }
@@ -32,46 +29,46 @@ describe('mana', function () {
 
   describe('#args', function () {
     it('aliases types', function () {
-      expect(mana.args([function () {}])).to.have.property('fn');
-      expect(mana.args([function () {}])).to.have.property('function');
+      assume(mana.args([function () {}])).to.have.property('fn');
+      assume(mana.args([function () {}])).to.have.property('function');
 
-      expect(mana.args([{}])).to.have.property('options');
-      expect(mana.args([{}])).to.have.property('object');
+      assume(mana.args([{}])).to.have.property('options');
+      assume(mana.args([{}])).to.have.property('object');
 
-      expect(mana.args(['foo'])).to.have.property('str');
-      expect(mana.args(['foo'])).to.have.property('string');
+      assume(mana.args(['foo'])).to.have.property('str');
+      assume(mana.args(['foo'])).to.have.property('string');
 
-      expect(mana.args([0])).to.have.property('nr');
-      expect(mana.args([0])).to.have.property('number');
+      assume(mana.args([0])).to.have.property('nr');
+      assume(mana.args([0])).to.have.property('number');
 
-      expect(mana.args([[]])).to.have.property('array');
-      expect(mana.args([new Date])).to.have.property('date');
+      assume(mana.args([[]])).to.have.property('array');
+      assume(mana.args([new Date])).to.have.property('date');
     });
 
     it('parses multiple types correctly', function () {
       var types = mana.args([{}, 'str']);
 
-      expect(types).to.have.property('string');
-      expect(types).to.have.property('object');
+      assume(types).to.have.property('string');
+      assume(types).to.have.property('object');
     });
   });
 
   describe('#querystring, #json', function () {
     it('returns an empty string if no querystring can be made', function () {
-      expect(mana.querystring({}, {})).to.equal('');
-      expect(mana.querystring({}, [])).to.equal('');
-      expect(mana.querystring({}, ['foo'])).to.equal('');
+      assume(mana.querystring({}, {})).to.equal('');
+      assume(mana.querystring({}, [])).to.equal('');
+      assume(mana.querystring({}, ['foo'])).to.equal('');
     });
 
     it('prefixes the querystring with a ?', function () {
-      expect(mana.querystring({ foo: 'bar' }, ['foo'])).to.equal('?foo=bar');
+      assume(mana.querystring({ foo: 'bar' }, ['foo'])).to.equal('?foo=bar');
     });
 
     it('supports default query strings but ignores `undefined` as value', function () {
-      expect(mana.querystring({}, { foo: 'bar' })).to.equal('?foo=bar');
-      expect(mana.querystring({}, { foo: undefined })).to.equal('');
-      expect(mana.querystring({}, { foo: 0 })).to.equal('?foo=0');
-      expect(mana.querystring({}, { foo: 0, bar: 'bar' })).to.equal('?foo=0&bar=bar');
+      assume(mana.querystring({}, { foo: 'bar' })).to.equal('?foo=bar');
+      assume(mana.querystring({}, { foo: undefined })).to.equal('');
+      assume(mana.querystring({}, { foo: 0 })).to.equal('?foo=0');
+      assume(mana.querystring({}, { foo: 0, bar: 'bar' })).to.equal('?foo=0&bar=bar');
     });
 
     it('removes the found querystrings from the first options argument', function () {
@@ -80,40 +77,40 @@ describe('mana', function () {
         bar: 'foo'
       }, query = mana.querystring(options, ['foo']);
 
-      expect(query).to.equal('?foo=bar');
-      expect(options).to.not.have.property('foo');
-      expect(options.bar).to.equal('foo');
-      expect(Object.keys(options).length).to.equal(1);
+      assume(query).to.equal('?foo=bar');
+      assume(options).to.not.have.property('foo');
+      assume(options.bar).to.equal('foo');
+      assume(Object.keys(options).length).to.equal(1);
     });
   });
 
   describe('#type', function () {
     it('detects array', function () {
-      expect(mana.type([])).to.equal('array');
+      assume(mana.type([])).to.equal('array');
     });
 
     it('detects regexp', function () {
-      expect(mana.type(/\//)).to.equal('regexp');
+      assume(mana.type(/\//)).to.equal('regexp');
     });
 
     it('detects function', function () {
-      expect(mana.type(function() {})).to.equal('function');
+      assume(mana.type(function() {})).to.equal('function');
     });
 
     it('detects string', function () {
-      expect(mana.type('string')).to.equal('string');
+      assume(mana.type('string')).to.equal('string');
     });
 
     it('detects error', function () {
-      expect(mana.type(new Error())).to.equal('error');
+      assume(mana.type(new Error())).to.equal('error');
     });
 
     it('detects date', function () {
-      expect(mana.type(new Date())).to.equal('date');
+      assume(mana.type(new Date())).to.equal('date');
     });
 
     it('detects object', function () {
-      expect(mana.type({})).to.equal('object');
+      assume(mana.type({})).to.equal('object');
     });
   });
 
@@ -122,10 +119,10 @@ describe('mana', function () {
       mana.tokens = ['foo', 'bar'];
       mana.tokenizer();
 
-      expect(mana.tokens.length).to.equal(2);
+      assume(mana.tokens.length).to.equal(2);
       mana.tokens.forEach(function (token) {
-        expect(token).to.be.instanceOf(Token);
-        expect(/token (foo|bar)/i.test(token.authorization)).to.equal(true);
+        assume(token).to.be.instanceOf(Token);
+        assume(/token (foo|bar)/i.test(token.authorization)).to.equal(true);
       });
     });
 
@@ -133,27 +130,27 @@ describe('mana', function () {
       mana.tokens = ['foo', undefined];
       mana.tokenizer();
 
-      expect(mana.tokens.length).to.equal(1);
+      assume(mana.tokens.length).to.equal(1);
     });
 
     it('prevents duplicate tokens', function () {
       mana.tokens =  ['foo', 'foo', 'bar'];
       mana.tokenizer().tokenizer().tokens.forEach(function (token) {
-        expect(/foo|bar/.test(token.authorization)).to.equal(true);
+        assume(/foo|bar/.test(token.authorization)).to.equal(true);
       });
     });
 
     it('allows multiple invocations', function () {
       mana.tokens = ['foo', 'bar'];
       mana.tokenizer().tokenizer().tokens.forEach(function (token) {
-        expect(token).to.be.instanceOf(Token);
+        assume(token).to.be.instanceOf(Token);
       });
     });
 
     it('accepts strings and Token instances', function () {
       mana.tokens = ['foo', new Token('banana'), 'bar'];
       mana.tokenizer().tokenizer().tokens.forEach(function (token) {
-        expect(token).to.be.instanceOf(Token);
+        assume(token).to.be.instanceOf(Token);
       });
     });
   });
@@ -173,17 +170,17 @@ describe('mana', function () {
       mana.roll();
       var token = mana.tokens[0];
 
-      expect(token.ratelimit).to.equal(mana.ratelimit);
-      expect(token.remaining).to.equal(9000);
-      expect(token.ratereset).to.equal(mana.ratereset);
+      assume(token.ratelimit).to.equal(mana.ratelimit);
+      assume(token.remaining).to.equal(9000);
+      assume(token.ratereset).to.equal(mana.ratereset);
     });
 
     it('returns boolean values indicating a working token', function () {
-      expect(mana.roll()).to.equal(true);
+      assume(mana.roll()).to.equal(true);
 
       mana.remaining = 0;
       mana.ratereset = (Date.now() / 1000) + 100;
-      expect(mana.roll()).to.equal(false);
+      assume(mana.roll()).to.equal(false);
     });
 
     it('returns the most optimal token', function () {
@@ -199,8 +196,8 @@ describe('mana', function () {
       mana.tokens[1].remaining = token.remaining = 1000;
       token.ratelimit = 10000;
 
-      expect(mana.roll()).to.equal(true);
-      expect(token.authorization).to.equal(mana.authorization);
+      assume(mana.roll()).to.equal(true);
+      assume(token.authorization).to.equal(mana.authorization);
     });
   });
 
@@ -214,24 +211,21 @@ describe('mana', function () {
 describe('Tokens', function () {
   'use strict';
 
-  var Mana = require('../')
-    , chai = require('chai')
-    , expect = chai.expect
+  var assume = require('assume')
+    , Mana = require('../')
     , Token = Mana.Token;
-
-  chai.config.includeStack = true;
 
   var token = new Token('foo')
     , mana = new Mana();
 
   it('sets all values to Infinity', function () {
-    expect(token.ratelimit).to.equal(Infinity);
-    expect(token.ratereset).to.equal(Infinity);
-    expect(token.remaining).to.equal(Infinity);
+    assume(token.ratelimit).to.equal(Infinity);
+    assume(token.ratereset).to.equal(Infinity);
+    assume(token.remaining).to.equal(Infinity);
   });
 
   it('transforms the given token to an correct Authorization header value', function () {
-    expect(token.authorization).to.equal('token foo');
+    assume(token.authorization).to.equal('token foo');
   });
 
   describe("#available", function () {
@@ -242,28 +236,28 @@ describe('Tokens', function () {
     });
 
     it('is unavailable if values are zero', function () {
-      expect(token.available()).to.equal(false);
+      assume(token.available()).to.equal(false);
     });
 
     it('is available when fist initialised', function () {
-      expect((new Token()).available()).to.equal(true);
+      assume((new Token()).available()).to.equal(true);
     });
 
     it('is available if it has remaining rates', function () {
-      expect(token.available()).to.equal(false);
+      assume(token.available()).to.equal(false);
 
       token.remaining = 1;
-      expect(token.available()).to.equal(true);
+      assume(token.available()).to.equal(true);
     });
 
     it('is available if our rate has been reset', function () {
-      expect(token.available()).to.equal(false);
+      assume(token.available()).to.equal(false);
 
       token.ratereset = (Date.now() / 1000) - 10;
-      expect(token.available()).to.equal(true);
+      assume(token.available()).to.equal(true);
 
       token.ratereset = (Date.now() / 1000) + 10;
-      expect(token.available()).to.equal(false);
+      assume(token.available()).to.equal(false);
     });
   });
 });
