@@ -1,5 +1,7 @@
 # mana
 
+[![Build Status](https://travis-ci.org/3rd-Eden/mana.svg)](https://travis-ci.org/3rd-Eden/mana)
+
 Mana is an small package that provides basic and a dead simple API structure for
 creating high performance API clients. Take your mana potion and start creating
 magical API clients which contain the following powers:
