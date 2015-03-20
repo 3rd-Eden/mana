@@ -5,12 +5,14 @@
  *
  * @constructor
  * @param {String} OAuth The OAuth token.
+ * @param {String} prefix Authorization prefix.
  * @param {Object} options Optional options.
  * @api public
  */
-function Token(OAuth, options) {
-  if (!(this instanceof Token)) return new Token(OAuth, options);
+function Token(OAuth, prefix, options) {
+  if (!this) return new Token(OAuth, prefix, options);
 
+  prefix = prefix || 'token ';
   options = options || {};
 
   options.timeout = 'timeout' in options ? options.timeout : 50;
@@ -20,7 +22,7 @@ function Token(OAuth, options) {
   this.ratereset = Infinity;
   this.remaining = Infinity;
   this.timeout = options.timout;
-  this.authorization = 'token '+ OAuth;
+  this.authorization = prefix + OAuth;
 }
 
 /**
@@ -58,6 +60,7 @@ Token.prototype.available = function available() {
  * Token has been returned to the pool.
  *
  * @param {Mana} mana The mana instance that used the taken
+ * @returns {Token}
  * @api public
  */
 Token.prototype.returned = function returned(mana) {
@@ -70,6 +73,6 @@ Token.prototype.returned = function returned(mana) {
 };
 
 //
-// Expose the module
+// Expose the module.
 //
 module.exports = Token;
