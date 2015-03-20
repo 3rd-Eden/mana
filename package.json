@@ -4,7 +4,7 @@
   "description": "mana potion",
   "main": "index.js",
   "scripts": {
-    "test": "mocha $(find test -name '*.test.js')"
+    "test": "mocha test.js"
   },
   "repository": {
     "type": "git",
@@ -31,7 +31,7 @@
     "back": "0.1.x",
     "diagnostics": "0.0.x",
     "fusing": "0.3.x",
-    "ms": "0.6.x",
+    "millisecond": "0.0.x",
     "request": "2.x.x",
     "eventemitter3": "0.1.x"
   },

@@ -4,12 +4,12 @@ var EventEmitter = require('eventemitter3')
   , diagnostics = require('diagnostics')
   , request = require('request')
   , qs = require('querystring')
+  , ms = require('millisecond')
   , Assign = require('assign')
   , Token = require('./token')
   , fuse = require('fusing')
   , back = require('back')
-  , url = require('url')
-  , ms = require('ms');
+  , url = require('url');
 
 //
 // Cached variables to improve performance.
@@ -74,6 +74,14 @@ Mana.prototype.maxdelay = '60 seconds'; // Max duration of exponential back off
 Mana.prototype.mindelay = '100 ms';     // Min duration of exponential back off
 Mana.prototype.retries = 3;             // Allowed back off attempts.
 Mana.prototype.factor = 2;              // Back off factor.
+
+/**
+ * The prefix for authorization headers for when multiple tokens can be used.
+ *
+ * @type {String}
+ * @public
+ */
+Mana.prototype.prefix = 'Token ';
 
 /**
  * The default request timeout, to prevent long running requests without any way
@@ -262,11 +270,14 @@ Mana.prototype.roll = function roll() {
  * @api private
  */
 Mana.prototype.tokenizer = function tokenizer() {
-  this.tokens = this.tokens.filter(function filter(token, index, tokens) {
+  var mana = this;
+
+  mana.tokens = mana.tokens.filter(function filter(token, index, tokens) {
     return Boolean(token) && tokens.indexOf(token) === index;
   }).map(function tokenizing(OAuth) {
     if (OAuth instanceof Token) return OAuth;
-    return new Token(OAuth);
+
+    return new Token(OAuth, mana.prefix);
   });
 
   return this;

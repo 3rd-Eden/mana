@@ -2,7 +2,7 @@ describe('mana', function () {
   'use strict';
 
   var assume = require('assume')
-    , Mana = require('../')
+    , Mana = require('./')
     , Token = Mana.Token;
 
   var mana = new Mana();
@@ -115,6 +115,22 @@ describe('mana', function () {
   });
 
   describe('tokenizer', function () {
+    it('prefixes tokens with a custom prefix', function () {
+      var NaNa = Mana.extend({
+        prefix: 'hello-world '
+      });
+
+      var nana = new NaNa();
+      nana.tokens = ['foo', 'bar'];
+      nana.tokenizer();
+
+      assume(nana.tokens.length).to.equal(2);
+      nana.tokens.forEach(function (token) {
+        assume(token).to.be.instanceOf(Token);
+        assume(/hello-world (foo|bar)/i.test(token.authorization)).to.equal(true);
+      });
+    });
+
     it('transforms all tokens to Token instances', function () {
       mana.tokens = ['foo', 'bar'];
       mana.tokenizer();
@@ -212,7 +228,7 @@ describe('Tokens', function () {
   'use strict';
 
   var assume = require('assume')
-    , Mana = require('../')
+    , Mana = require('./')
     , Token = Mana.Token;
 
   var token = new Token('foo')
@@ -226,6 +242,11 @@ describe('Tokens', function () {
 
   it('transforms the given token to an correct Authorization header value', function () {
     assume(token.authorization).to.equal('token foo');
+  });
+
+  it('can set a custom prefix for the token', function () {
+    var token = new Token('foo', 'prefix-lol ');
+    assume(token.authorization).equals('prefix-lol foo');
   });
 
   describe("#available", function () {
