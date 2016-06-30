@@ -744,14 +744,14 @@ Mana.prototype.send = function send(args) {
 
         if (
           !(res.statusCode >= 200 && res.statusCode < 300)
-          && 404 !== res.statusCode
+          && 404 !== res.statusCode && 409 !== res.statusCode
         ) {
 
           //
           // Assume that the server is returning an unknown response and that we
           // should try a different server.
           //
-          mana.debug('Received an invalid statusCode (%s) for URL %s', res.statusCode, options.uri);
+          mana.debug('Received an invalid statusCode (%s) for URL %s %s', res.statusCode, options.uri, body);
           err = new Error('Received a non 200 status code: '+ res.statusCode);
 
           err.url = options.uri;          // The URL we accessed.
@@ -808,17 +808,18 @@ Mana.prototype.send = function send(args) {
         // write it to our Assign instance it could cause issues as the data
         // format might differ. So instead we're going to call this as an error.
         //
-        if (res.statusCode === 404 && 'HEAD' !== options.method) {
-          err = new Error('Invalid status code: 404');
+        if ((res.statusCode === 404 || res.statusCode === 409)
+          && 'HEAD' !== options.method) {
+          err = new Error('Invalid status code: ' + res.statusCode);
 
-          err.url = options.uri;          // URL of the request.
-          err.statusCode = 404;           // Status code.
-          err.errors = errors;            // Previous errors.
-          err.body = body;                // The response body.
-          err.data = data;                // Parsed response.
-          err.remaining = mana.remaining; // Rate remaining.
-          err.ratereset = mana.ratereset; // Rate reset.
-          err.ratelimit = mana.ratelimit; // Rate limit.
+          err.url = options.uri;           // URL of the request.
+          err.statusCode = res.statusCode; // Status code.
+          err.errors = errors;             // Previous errors.
+          err.body = body;                 // The response body.
+          err.data = data;                 // Parsed response.
+          err.remaining = mana.remaining;  // Rate remaining.
+          err.ratereset = mana.ratereset;  // Rate reset.
+          err.ratelimit = mana.ratelimit;  // Rate limit.
 
           return assign.destroy(err);
         }
