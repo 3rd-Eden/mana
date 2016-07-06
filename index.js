@@ -610,7 +610,18 @@ Mana.prototype.send = function send(args) {
   // Now that all modifications are complete we can finally assign the callback
   // to `assign` instance so it can generate the correct request id.
   //
-  assign.finally(this.all(args.str));
+  var allCb = this.all(args.str);
+
+  if (assign.fn) {
+    // A callback already exists.
+    var prevCb = assign.fn;
+    assign.finally(function () {
+      prevCb.apply(this, arguments);
+      allCb.apply(this, arguments);
+    });
+  } else {
+    assign.finally(allCb);
+  }
 
   //
   // Optimization: Check if we're already running a request for this given API
@@ -618,10 +629,12 @@ Mana.prototype.send = function send(args) {
   // finishes. This allows us to get a response faster for the callback and
   // reduce requests on the actual API.
   //
-  if (options.method === 'GET' && this.fetching(args.str)) {
-    return this.push(args.str, args.fn, assign);
-  } else {
-    this.push(args.str, args.fn);
+  if (args.fn) {
+    if (options.method === 'GET' && this.fetching(args.str)) {
+      return this.push(args.str, args.fn, assign);
+    } else {
+      this.push(args.str, args.fn);
+    }
   }
 
   //
