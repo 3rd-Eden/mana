@@ -8,7 +8,7 @@ var EventEmitter = require('eventemitter3')
   , Assign = require('assign')
   , Token = require('./token')
   , fuse = require('fusing')
-  , back = require('back')
+  , back = require('back/reconnect')
   , url = require('url');
 
 //
