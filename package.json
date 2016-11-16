@@ -33,11 +33,11 @@
     "fusing": "1.0.x",
     "millisecond": "0.1.x",
     "request": "2.x.x",
-    "eventemitter3": "1.2.x"
+    "eventemitter3": "~2.0.2"
   },
   "devDependencies": {
     "assume": "1.4.x",
-    "mocha": "2.5.x",
+    "mocha": "~3.1.2",
     "pre-commit": "1.1.x"
   }
 }
