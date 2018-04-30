@@ -623,8 +623,24 @@ Mana.prototype.send = function send(args) {
           args.options
         ),
         args.options.params
-    );
+      );
     } else {
+      if(this.isGraphql) { 
+        var query = args.options.query || '{ \n }'; 
+ 
+        if(!~query.indexOf('rateLimit')) { 
+          var queryEnd = query.lastIndexOf('}'); 
+          var rateLimitFrag = '\n fragment rateLimit on Query { rateLimit { limit cost remaining resetAt } }'; 
+       
+          query = query.slice(0, queryEnd) + '  ...rateLimit \n' + query.slice(queryEnd); 
+          query += rateLimitFrag; 
+ 
+          args.options.params = args.options.params || {}; 
+          args.options.params.query = query; 
+          args.options.query = query; 
+        } 
+      }
+      
       options.json = this.json(args.options, args.options.params);
     }
   }
