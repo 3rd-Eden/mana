@@ -23,8 +23,10 @@ var toString = Object.prototype.toString
  * @constructor
  * @api public
  */
-function Mana() {
+function Mana(isGraphql) {
   this.fuse();
+
+  this.isGraphql = isGraphql;
 
   this.fnqueue = Object.create(null);   // Callback queue.
   this.authHeader = 'Authorization';    // Default auth header
@@ -40,7 +42,6 @@ function Mana() {
   this.debug = diagnostics('mana:'+ this.name);
 
   if ('function' === this.type(this.initialise)) this.initialise.apply(this, arguments);
-  if ('function' === this.type(this.initialize)) this.initialize.apply(this, arguments);
 
   //
   // This is a required option, we cannot continue properly if we don't have an
@@ -204,12 +205,9 @@ Mana.prototype.json = function jsonify(options, allowed) {
  */
 Mana.prototype.bail = function bail(fn, err, data) {
   var assign = new Assign(this, fn);
+  var _setImmediate = global.setImmediate || global.setTimeout;
 
-  (
-    global.setImmediate
-    ? global.setImmediate
-    : global.setTimeout
-  )(function immediate() {
+  _setImmediate(function immediate() {
     if (err) return assign.destroy(err);
     assign.write(data, { end: true });
   });
@@ -540,6 +538,31 @@ Mana.prototype.fireforget = function fireforget(args) {
   return this;
 };
 
+Mana.prototype.setRatelimit = function setRatelimit(ratereset, ratelimit, remaining) {
+  if (!isNaN(ratereset)) this.ratereset = ratereset;
+  if (!isNaN(ratelimit)) this.ratelimit = ratelimit;
+  if (!isNaN(remaining)) {
+    this.remaining = remaining;
+    this.debug('Only %d API request remaining', remaining);
+  }
+}
+
+Mana.prototype.parseRatelimitFromHeaders = function parseRatelimitFromHeaders(headers) {
+  var ratereset = +headers['x-ratelimit-reset']
+    , ratelimit = +headers['x-ratelimit-limit']
+    , remaining = +headers['x-ratelimit-remaining'];
+
+  this.setRatelimit(ratereset, ratelimit, remaining);
+}
+
+Mana.prototype.parseRatelimitFromBody = function parseRatelimitFromBody(data) {
+  if(data && data.rateLimit) { 
+    var limitData = data.rateLimit;
+
+    this.setRatelimit(limitData.resetAt, limitData.limit, limitData.remaining);
+  }
+}
+
 /**
  * Query against a given API endpoint.
  *
@@ -714,16 +737,7 @@ Mana.prototype.send = function send(args) {
         // rate limit, so make sure we parse that out before we start handling
         // potential errors.
         //
-        var ratereset = +res.headers['x-ratelimit-reset']
-          , ratelimit = +res.headers['x-ratelimit-limit']
-          , remaining = +res.headers['x-ratelimit-remaining'];
-
-        if (!isNaN(ratereset)) mana.ratereset = ratereset;
-        if (!isNaN(ratelimit)) mana.ratelimit =  ratelimit;
-        if (!isNaN(remaining)) {
-          mana.remaining = remaining;
-          mana.debug('Only %d API request remaining', remaining);
-        }
+        mana.isGraphql ? mana.parseRatelimitFromHeaders(res.headers) : mana.parseRatelimitFromBody(body && body.data);
 
         //
         // We had a successful cache hit, use our cached result as response
