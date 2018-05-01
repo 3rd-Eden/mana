@@ -504,29 +504,27 @@ Mana.prototype.fireforget = function fireforget(args) {
   args.fn = args.fn || function nope() {};
 
   var key = args.object.key
-    , mana = this;
+    , mana = this
+    , _setImmediate = global.setImmediate || global.setTimeout; // setImmediate is only available since node 0.10
 
   //
   // Force asynchronous execution of cache retrieval without starving I/O
   //
-  (
-    global.setImmediate   // Only available since node 0.10
-    ? global.setImmediate
-    : global.setTimeout
-  )(function immediate() {
-    if (key && mana.cache) {
+  _setImmediate(function immediate() {
+    var cache = mana.cache;
+
+    if (key && cache) {
       if ('get' === args.string) {
-        if (mana.cache.get.length === 1) {
-          return args.fn(undefined, mana.cache.get(key));
-        } else {
-          return mana.cache.get(key, args.fn);
-        }
+
+        return cache.get.length === 1 ?
+          args.fn(undefined, cache.get(key)) :
+          cache.get(key, args.fn);
+
       } else if ('set' === args.string) {
-        if (mana.cache.set.length === 2) {
-          return args.fn(undefined, mana.cache.set(key, args.object));
-        } else {
-          return mana.cache.set(key, args.object, args.fn);
-        }
+
+        return cache.set.length === 2 ?
+          args.fn(undefined, cache.set(key, args.object)) :
+          cache.set(key, args.object, args.fn);
       }
     }
 
@@ -539,6 +537,14 @@ Mana.prototype.fireforget = function fireforget(args) {
   return this;
 };
 
+/**
+ * Sets the rate limit information
+ * 
+ * @param {number} ratereset 
+ * @param {number} ratelimit 
+ * @param {number} remaining 
+ * @api private
+ */
 Mana.prototype.setRatelimit = function setRatelimit(ratereset, ratelimit, remaining) {
   if (!isNaN(ratereset)) this.ratereset = ratereset;
   if (!isNaN(ratelimit)) this.ratelimit = ratelimit;
@@ -548,6 +554,12 @@ Mana.prototype.setRatelimit = function setRatelimit(ratereset, ratelimit, remain
   }
 }
 
+/**
+ * Gets the rate limit information from the response headers and sets it
+ * 
+ * @param {Object} headers Response headers
+ * @api private
+ */
 Mana.prototype.parseRatelimitFromHeaders = function parseRatelimitFromHeaders(headers) {
   var ratereset = +headers['x-ratelimit-reset']
     , ratelimit = +headers['x-ratelimit-limit']
@@ -556,6 +568,12 @@ Mana.prototype.parseRatelimitFromHeaders = function parseRatelimitFromHeaders(he
   this.setRatelimit(ratereset, ratelimit, remaining);
 }
 
+/**
+ * Gets the rate limit information from the response body and sets it
+ * 
+ * @param {Object} data response data from the GraphQL API
+ * @api private
+ */
 Mana.prototype.parseRatelimitFromBody = function parseRatelimitFromBody(data) {
   if(data && data.rateLimit) { 
     var limitData = data.rateLimit;
