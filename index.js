@@ -753,7 +753,7 @@ Mana.prototype.send = function send(args) {
         // rate limit, so make sure we parse that out before we start handling
         // potential errors.
         //
-        mana.isGraphql ? mana.parseRatelimitFromHeaders(res.headers) : mana.parseRatelimitFromBody(body && body.data);
+        !mana.isGraphql ? mana.parseRatelimitFromHeaders(res.headers) : mana.parseRatelimitFromBody(body && body.data);
 
         //
         // We had a successful cache hit, use our cached result as response
