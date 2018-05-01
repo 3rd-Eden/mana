@@ -24,10 +24,7 @@ var toString = Object.prototype.toString
  * @api public
  */
 function Mana(options) {
-  options = options || {};
   this.fuse();
-
-  this.isGraphql = options.isGraphql;
 
   this.fnqueue = Object.create(null);   // Callback queue.
   this.authHeader = 'Authorization';    // Default auth header
@@ -555,31 +552,28 @@ Mana.prototype.setRatelimit = function setRatelimit(ratereset, ratelimit, remain
 }
 
 /**
+ * Helper function for registering a rate limit parser
+ * @param {function} ratelimitParser
+ * @api public
+ */
+Mana.prototype.setRatelimitParser = function setRatelimitParser(ratelimitParser) {
+  if(typeof ratelimitParser === 'function'){
+    this.ratelimitParser = ratelimitParser;
+  }
+}
+
+/**
  * Gets the rate limit information from the response headers and sets it
  * 
  * @param {Object} headers Response headers
  * @api private
  */
-Mana.prototype.parseRatelimitFromHeaders = function parseRatelimitFromHeaders(headers) {
+Mana.prototype.ratelimitHeader = function ratelimitHeader(headers) {
   var ratereset = +headers['x-ratelimit-reset']
     , ratelimit = +headers['x-ratelimit-limit']
     , remaining = +headers['x-ratelimit-remaining'];
 
   this.setRatelimit(ratereset, ratelimit, remaining);
-}
-
-/**
- * Gets the rate limit information from the response body and sets it
- * 
- * @param {Object} data response data from the GraphQL API
- * @api private
- */
-Mana.prototype.parseRatelimitFromBody = function parseRatelimitFromBody(data) {
-  if(data && data.rateLimit) { 
-    var limitData = data.rateLimit;
-
-    this.setRatelimit(limitData.resetAt, limitData.limit, limitData.remaining);
-  }
 }
 
 /**
@@ -644,22 +638,6 @@ Mana.prototype.send = function send(args) {
         args.options.params
       );
     } else {
-      if(this.isGraphql) { 
-        var query = args.options.query || '{ \n }'; 
- 
-        if(!~query.indexOf('rateLimit')) { 
-          var queryEnd = query.lastIndexOf('}'); 
-          var rateLimitFrag = '\n fragment rateLimit on Query { rateLimit { limit cost remaining resetAt } }'; 
-       
-          query = query.slice(0, queryEnd) + '  ...rateLimit \n' + query.slice(queryEnd); 
-          query += rateLimitFrag; 
- 
-          args.options.params = args.options.params || {}; 
-          args.options.params.query = query; 
-          args.options.query = query; 
-        } 
-      }
-      
       options.json = this.json(args.options, args.options.params);
     }
   }
@@ -772,7 +750,11 @@ Mana.prototype.send = function send(args) {
         // rate limit, so make sure we parse that out before we start handling
         // potential errors.
         //
-        !mana.isGraphql ? mana.parseRatelimitFromHeaders(res.headers) : mana.parseRatelimitFromBody(body && body.data);
+        if(mana.ratelimitParser && typeof mana.ratelimitParser === 'function') {
+          mana.ratelimitParser(res, body, mana.setRatelimit.bind(this));
+        } else {
+          mana.ratelimitHeader(res.headers);
+        }
 
         //
         // We had a successful cache hit, use our cached result as response
