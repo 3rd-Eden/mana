@@ -23,10 +23,11 @@ var toString = Object.prototype.toString
  * @constructor
  * @api public
  */
-function Mana(isGraphql) {
+function Mana(options) {
+  options = options || {};
   this.fuse();
 
-  this.isGraphql = isGraphql;
+  this.isGraphql = options.isGraphql;
 
   this.fnqueue = Object.create(null);   // Callback queue.
   this.authHeader = 'Authorization';    // Default auth header
