@@ -23,7 +23,7 @@ var toString = Object.prototype.toString
  * @constructor
  * @api public
  */
-function Mana(options) {
+function Mana() {
   this.fuse();
 
   this.fnqueue = Object.create(null);   // Callback queue.
