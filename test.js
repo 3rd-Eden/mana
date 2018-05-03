@@ -2,12 +2,20 @@ describe('mana', function () {
   'use strict';
 
   var assume = require('assume')
+    , sinon = require('sinon')
     , Mana = require('./')
     , Token = Mana.Token;
 
+  assume.use(require('assume-sinon'));
+
+  var sandbox = sinon.sandbox.create();
   var mana = new Mana();
 
   describe('construction', function () {
+    afterEach(function () {
+      sandbox.reset();
+    });
+
     it('is exposed as a function', function() { 
       assume(Mana).is.a('function'); 
     }); 
@@ -177,6 +185,30 @@ describe('mana', function () {
       assume(mana.ratereset).equals(4000);
       assume(mana.ratelimit).equals(5000);
       assume(mana.remaining).equals(6000);
+    });
+  });
+
+  describe('#send', function () {
+    var sendMana;
+
+    this.timeout(500);
+
+    beforeEach(function () {
+      sendMana = new Mana();
+    });
+
+    it('calls ratelimitParser with res, body, and setRatelimit', function (done) {
+      sendMana.setRatelimitParser(sandbox.stub());
+      sendMana.send(
+        ['users', 'octocat', 'orgs'],
+        { api: 'https://api.github.com/' },
+        function handler(err, body) {
+          if (err) return done(err);
+    
+          assume(sendMana.ratelimitParser).is.calledWith(sinon.match.has('headers'), body, sendMana.setRatelimit);
+
+          done();
+      });
     });
   });
 

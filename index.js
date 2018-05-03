@@ -27,6 +27,7 @@ function Mana() {
   this.fuse();
 
   this.fnqueue = Object.create(null);   // Callback queue.
+  this.ratelimitParser = null;          // Optional function for parsing the rate limit information.
   this.authHeader = 'Authorization';    // Default auth header
   this.remaining = 0;                   // How many API calls are remaining.
   this.ratelimit = 0;                   // The amount of API calls allowed.
@@ -38,6 +39,8 @@ function Mana() {
   // the name of the implementer.
   //
   this.debug = diagnostics('mana:'+ this.name);
+
+  this.setRatelimit = this.setRatelimit.bind(this);
 
   if ('function' === this.type(this.initialise)) this.initialise.apply(this, arguments);
 
@@ -549,7 +552,7 @@ Mana.prototype.setRatelimit = function setRatelimit(ratereset, ratelimit, remain
     this.remaining = remaining;
     this.debug('Only %d API request remaining', remaining);
   }
-}
+};
 
 /**
  * Helper function for registering a rate limit parser
@@ -560,7 +563,7 @@ Mana.prototype.setRatelimitParser = function setRatelimitParser(ratelimitParser)
   if(typeof ratelimitParser === 'function'){
     this.ratelimitParser = ratelimitParser;
   }
-}
+};
 
 /**
  * Gets the rate limit information from the response headers and sets it
@@ -574,7 +577,7 @@ Mana.prototype.ratelimitHeader = function ratelimitHeader(headers) {
     , remaining = +headers['x-ratelimit-remaining'];
 
   this.setRatelimit(ratereset, ratelimit, remaining);
-}
+};
 
 /**
  * Query against a given API endpoint.
@@ -727,6 +730,8 @@ Mana.prototype.send = function send(args) {
        * @api private
        */
       function parse(err, res, body) {
+        var hasRatelimitParser = mana.ratelimitParser && typeof mana.ratelimitParser === 'function';
+
         mana.debug('Response headers %j', res && res.headers || {});
         assign.emit('headers', res && res.headers || {});
 
@@ -750,9 +755,7 @@ Mana.prototype.send = function send(args) {
         // rate limit, so make sure we parse that out before we start handling
         // potential errors.
         //
-        if(mana.ratelimitParser && typeof mana.ratelimitParser === 'function') {
-          mana.ratelimitParser(res, body, mana.setRatelimit.bind(this));
-        } else {
+        if (!hasRatelimitParser) {
           mana.ratelimitHeader(res.headers);
         }
 
@@ -855,6 +858,10 @@ Mana.prototype.send = function send(args) {
 
             return next(e);
           }
+        }
+
+        if (hasRatelimitParser) {
+          mana.ratelimitParser(res, data, mana.setRatelimit);
         }
 
         //
