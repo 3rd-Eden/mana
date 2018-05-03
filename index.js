@@ -27,6 +27,7 @@ function Mana() {
   this.fuse();
 
   this.fnqueue = Object.create(null);   // Callback queue.
+  this.ratelimitParser = null;          // Optional function for parsing the rate limit information.
   this.authHeader = 'Authorization';    // Default auth header
   this.remaining = 0;                   // How many API calls are remaining.
   this.ratelimit = 0;                   // The amount of API calls allowed.
@@ -39,8 +40,9 @@ function Mana() {
   //
   this.debug = diagnostics('mana:'+ this.name);
 
+  this.setRatelimit = this.setRatelimit.bind(this);
+
   if ('function' === this.type(this.initialise)) this.initialise.apply(this, arguments);
-  if ('function' === this.type(this.initialize)) this.initialize.apply(this, arguments);
 
   //
   // This is a required option, we cannot continue properly if we don't have an
@@ -204,12 +206,9 @@ Mana.prototype.json = function jsonify(options, allowed) {
  */
 Mana.prototype.bail = function bail(fn, err, data) {
   var assign = new Assign(this, fn);
+  var _setImmediate = global.setImmediate || global.setTimeout;
 
-  (
-    global.setImmediate
-    ? global.setImmediate
-    : global.setTimeout
-  )(function immediate() {
+  _setImmediate(function immediate() {
     if (err) return assign.destroy(err);
     assign.write(data, { end: true });
   });
@@ -505,29 +504,27 @@ Mana.prototype.fireforget = function fireforget(args) {
   args.fn = args.fn || function nope() {};
 
   var key = args.object.key
-    , mana = this;
+    , mana = this
+    , _setImmediate = global.setImmediate || global.setTimeout; // setImmediate is only available since node 0.10
 
   //
   // Force asynchronous execution of cache retrieval without starving I/O
   //
-  (
-    global.setImmediate   // Only available since node 0.10
-    ? global.setImmediate
-    : global.setTimeout
-  )(function immediate() {
-    if (key && mana.cache) {
+  _setImmediate(function immediate() {
+    var cache = mana.cache;
+
+    if (key && cache) {
       if ('get' === args.string) {
-        if (mana.cache.get.length === 1) {
-          return args.fn(undefined, mana.cache.get(key));
-        } else {
-          return mana.cache.get(key, args.fn);
-        }
+
+        return cache.get.length === 1 ?
+          args.fn(undefined, cache.get(key)) :
+          cache.get(key, args.fn);
+
       } else if ('set' === args.string) {
-        if (mana.cache.set.length === 2) {
-          return args.fn(undefined, mana.cache.set(key, args.object));
-        } else {
-          return mana.cache.set(key, args.object, args.fn);
-        }
+
+        return cache.set.length === 2 ?
+          args.fn(undefined, cache.set(key, args.object)) :
+          cache.set(key, args.object, args.fn);
       }
     }
 
@@ -538,6 +535,48 @@ Mana.prototype.fireforget = function fireforget(args) {
   });
 
   return this;
+};
+
+/**
+ * Sets the rate limit information
+ * 
+ * @param {number} ratereset 
+ * @param {number} ratelimit 
+ * @param {number} remaining 
+ * @api private
+ */
+Mana.prototype.setRatelimit = function setRatelimit(ratereset, ratelimit, remaining) {
+  if (!isNaN(ratereset)) this.ratereset = ratereset;
+  if (!isNaN(ratelimit)) this.ratelimit = ratelimit;
+  if (!isNaN(remaining)) {
+    this.remaining = remaining;
+    this.debug('Only %d API request remaining', remaining);
+  }
+};
+
+/**
+ * Helper function for registering a rate limit parser
+ * @param {function} ratelimitParser
+ * @api public
+ */
+Mana.prototype.setRatelimitParser = function setRatelimitParser(ratelimitParser) {
+  if(typeof ratelimitParser === 'function'){
+    this.ratelimitParser = ratelimitParser;
+  }
+};
+
+/**
+ * Gets the rate limit information from the response headers and sets it
+ * 
+ * @param {Object} headers Response headers
+ * @api private
+ */
+Mana.prototype.ratelimitHeader = function ratelimitHeader(headers) {
+  var ratereset = +headers['x-ratelimit-reset']
+    , ratelimit = +headers['x-ratelimit-limit']
+    , remaining = +headers['x-ratelimit-remaining'];
+
+  this.setRatelimit(ratereset, ratelimit, remaining);
 };
 
 /**
@@ -600,7 +639,7 @@ Mana.prototype.send = function send(args) {
           args.options
         ),
         args.options.params
-    );
+      );
     } else {
       options.json = this.json(args.options, args.options.params);
     }
@@ -691,6 +730,8 @@ Mana.prototype.send = function send(args) {
        * @api private
        */
       function parse(err, res, body) {
+        var hasRatelimitParser = mana.ratelimitParser && typeof mana.ratelimitParser === 'function';
+
         mana.debug('Response headers %j', res && res.headers || {});
         assign.emit('headers', res && res.headers || {});
 
@@ -714,15 +755,8 @@ Mana.prototype.send = function send(args) {
         // rate limit, so make sure we parse that out before we start handling
         // potential errors.
         //
-        var ratereset = +res.headers['x-ratelimit-reset']
-          , ratelimit = +res.headers['x-ratelimit-limit']
-          , remaining = +res.headers['x-ratelimit-remaining'];
-
-        if (!isNaN(ratereset)) mana.ratereset = ratereset;
-        if (!isNaN(ratelimit)) mana.ratelimit =  ratelimit;
-        if (!isNaN(remaining)) {
-          mana.remaining = remaining;
-          mana.debug('Only %d API request remaining', remaining);
+        if (!hasRatelimitParser) {
+          mana.ratelimitHeader(res.headers);
         }
 
         //
@@ -824,6 +858,10 @@ Mana.prototype.send = function send(args) {
 
             return next(e);
           }
+        }
+
+        if (hasRatelimitParser) {
+          mana.ratelimitParser(res, data, mana.setRatelimit);
         }
 
         //

@@ -2,13 +2,33 @@ describe('mana', function () {
   'use strict';
 
   var assume = require('assume')
+    , sinon = require('sinon')
     , Mana = require('./')
     , Token = Mana.Token;
 
+  assume.use(require('assume-sinon'));
+
+  var sandbox = sinon.sandbox.create();
   var mana = new Mana();
 
   describe('construction', function () {
-    it('is exposed as function');
+    afterEach(function () {
+      sandbox.reset();
+    });
+
+    it('is exposed as a function', function() { 
+      assume(Mana).is.a('function'); 
+    }); 
+ 
+    it('exposes the token interface', function() { 
+      assume(Mana.Token).is.a('function'); 
+    }); 
+ 
+    it('exposes a `new` function that returns an instance of mana', function() { 
+      assume(Mana.new).is.a('function'); 
+      assume(Mana.new()).is.instanceOf(Mana); 
+    }); 
+    
     it('calls the initialise function');
   });
 
@@ -111,6 +131,84 @@ describe('mana', function () {
 
     it('detects object', function () {
       assume(mana.type({})).to.equal('object');
+    });
+  });
+
+  describe('#setRatelimit', function () {
+    beforeEach(function () {
+      mana.ratereset = 0;
+      mana.ratelimit = 0;
+      mana.remaining = 0;
+    });
+
+    it('sets the rate limit on mana', function () {
+      mana.setRatelimit(1000, 2000, 3000);
+
+      assume(mana.ratereset).equals(1000);
+      assume(mana.ratelimit).equals(2000);
+      assume(mana.remaining).equals(3000);
+    });
+
+    it('does not set nan values', function () {
+      mana.setRatelimit(NaN, NaN, NaN);
+
+      assume(mana.ratereset).equals(0);
+      assume(mana.ratelimit).equals(0);
+      assume(mana.remaining).equals(0);
+    });
+  });
+
+  describe('#setRatelimitParser', function () {
+    it('sets the ratelimit parser', function () {
+      var parseFunction = function() {};
+
+      mana.setRatelimitParser(parseFunction);
+
+      assume(mana.ratelimitParser).equals(parseFunction);
+    });
+
+    it('does not set a non function as the ratelimit parser', function () {
+      mana.setRatelimitParser(12);
+      
+      assume(mana.ratelimitParser).not.equals(12);
+    });
+  });
+
+  describe('#ratelimitHeader', function () {
+    it('gets the rate limit info from the headers and sets it on mana', function () {
+      mana.ratelimitHeader({
+        'x-ratelimit-reset': '4000',
+        'x-ratelimit-limit': '5000',
+        'x-ratelimit-remaining': '6000'
+      });
+
+      assume(mana.ratereset).equals(4000);
+      assume(mana.ratelimit).equals(5000);
+      assume(mana.remaining).equals(6000);
+    });
+  });
+
+  describe('#send', function () {
+    var sendMana;
+
+    this.timeout(500);
+
+    beforeEach(function () {
+      sendMana = new Mana();
+    });
+
+    it('calls ratelimitParser with res, body, and setRatelimit', function (done) {
+      sendMana.setRatelimitParser(sandbox.stub());
+      sendMana.send(
+        ['users', 'octocat', 'orgs'],
+        { api: 'https://api.github.com/' },
+        function handler(err, body) {
+          if (err) return done(err);
+    
+          assume(sendMana.ratelimitParser).is.calledWith(sinon.match.has('headers'), body, sendMana.setRatelimit);
+
+          done();
+      });
     });
   });
 
