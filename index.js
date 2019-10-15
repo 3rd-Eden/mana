@@ -649,8 +649,8 @@ Mana.prototype.send = function send(args) {
   // Now that all modifications are complete we can finally assign the callback
   // to `assign` instance so it can generate the correct request id.
   //
-  var cbId = options.json ? ':' + JSON.stringify(options.json) : '';
-  var allCb = this.all(args.str + cbId);
+  var key = args.str + (options.json ? ':' + JSON.stringify(options.json) : '');
+  var allCb = this.all(key);
 
   if (assign.fn) {
     // A callback already exists.
@@ -670,12 +670,10 @@ Mana.prototype.send = function send(args) {
   // reduce requests on the actual API.
   //
   if (args.fn) {
-    if (options.method === 'GET' && this.fetching(args.str)) {
-      return this.push(args.str, args.fn, assign);
-    } else if (options.json) {
-      this.push(args.str + ':' + JSON.stringify(options.json), args.fn);
+    if (options.method === 'GET' && this.fetching(key)) {
+      return this.push(key, args.fn, assign);
     } else {
-      this.push(args.str, args.fn);
+      this.push(key, args.fn);
     }
   }
 
