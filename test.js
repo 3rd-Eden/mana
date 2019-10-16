@@ -210,6 +210,44 @@ describe('mana', function () {
           done();
       });
     });
+
+    it('correctly handles concurrent POSTs to the same endpoint', function (done) {
+      this.timeout(1000);
+      var fooDone = false;
+      var barDone = false;
+
+      sendMana.setRatelimitParser(sandbox.stub());
+
+      sendMana.send(
+        ['posts'],
+        { 
+          api: 'https://jsonplaceholder.typicode.com/', 
+          method: 'POST', 
+          params: { title: 'foo' } 
+        },
+        function handler(err, body) {
+          if (err) return done(err);
+
+          assume(body[0].title).equals('foo');
+          fooDone = true;
+          if(barDone) done();
+      });
+
+      sendMana.send(
+        ['posts'],
+        { 
+          api: 'https://jsonplaceholder.typicode.com/', 
+          method: 'POST', 
+          params: { title: 'bar' } 
+        },
+        function handler(err, body) {
+          if (err) return done(err);
+
+          assume(body[0].title).equals('bar');
+          barDone = true;
+          if(fooDone) done();
+      });
+    });
   });
 
   describe('tokenizer', function () {
@@ -380,3 +418,5 @@ describe('Tokens', function () {
     });
   });
 });
+
+
